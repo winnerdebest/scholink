@@ -1,0 +1,83 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Likes</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <meta name="csrf-token" content="{{ csrf_token }}">
+</head>
+<body class="bg-gray-100 p-6">
+
+    <div class="bg-white p-6 rounded-lg shadow-md post-item" data-post-id="{{ post.id }}">
+        <div class="flex items-start space-x-4">
+            {% if post.student.photo %}
+                <img src="{{ post.student.photo.url }}" alt="{{ post.student.user.username }}" class="w-10 h-10 rounded-full object-cover">
+            {% else %}
+                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700">
+                    <i class="fas fa-user"></i>
+                </div>
+            {% endif %}
+            
+            <div class="flex-1">
+                <div class="flex items-center space-x-2">
+                    <h4 class="font-semibold">{{ post.student.user.username }}</h4>
+                    <span class="text-gray-500 text-sm">{{ post.created_at|timesince }} ago</span>
+                </div>
+                <p class="mt-2 text-gray-700">{{ post.content }}</p>
+                
+                <!-- Like/Dislike Buttons -->
+                <div class="mt-4 flex items-center space-x-4 text-gray-500">
+                    <button hx-post="{% url 'like_post' post.id %}"
+                            hx-trigger="click"
+                            hx-swap="none"
+                            class="like-btn flex items-center space-x-1 transition-colors duration-200 
+                            {% if request.user.student_profile in post.likes.all %}text-blue-600{% endif %}">
+                        <i class="far fa-thumbs-up"></i>
+                        <span class="like-count">{{ post.likes.count }}</span>
+                    </button>
+
+                    <button hx-post="{% url 'dislike_post' post.id %}"
+                            hx-trigger="click"
+                            hx-swap="none"
+                            class="dislike-btn flex items-center space-x-1 transition-colors duration-200 
+                            {% if request.user.student_profile in post.dislikes.all %}text-red-600{% endif %}">
+                        <i class="far fa-thumbs-down"></i>
+                        <span class="dislike-count">{{ post.dislikes.count }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // HTMX: Ensure CSRF Token is included in every request
+        document.body.addEventListener('htmx:configRequest', function(event) {
+            event.detail.headers['X-CSRFToken'] = document.querySelector('meta[name="csrf-token"]').content;
+        });
+
+        // Handle the response from like/dislike actions
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            const target = evt.detail.elt;
+            if (target.classList.contains('like-btn') || target.classList.contains('dislike-btn')) {
+                if (evt.detail.successful) {
+                    const response = JSON.parse(evt.detail.xhr.responseText);
+                    const postItem = target.closest('.post-item');
+                    
+                    // Update like button
+                    const likeBtn = postItem.querySelector('.like-btn');
+                    likeBtn.querySelector('.like-count').textContent = response.total_likes;
+                    likeBtn.classList.toggle('text-blue-600', response.liked);
+                    
+                    // Update dislike button
+                    const dislikeBtn = postItem.querySelector('.dislike-btn');
+                    dislikeBtn.querySelector('.dislike-count').textContent = response.total_dislikes;
+                    dislikeBtn.classList.toggle('text-red-600', response.disliked);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
