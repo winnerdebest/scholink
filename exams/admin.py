@@ -32,12 +32,7 @@ class ExamAdmin(admin.ModelAdmin):
     inlines = [QuestionInline]
 
 
-@admin.register(Assignment)
-class AssignmentAdmin(admin.ModelAdmin):
-    list_display = ('class_subject', 'is_active', 'created_at')
-    list_filter = ('class_subject', 'is_active')
-    search_fields = ('title', 'class_subject__subject__name')
-    inlines = [QuestionInline]
+
 
 
 @admin.register(Question)
@@ -59,9 +54,4 @@ class StudentExamRecordAdmin(admin.ModelAdmin):
     readonly_fields = ('responses', 'score', 'submitted_at')
 
 
-@admin.register(StudentAssignmentRecord)
-class StudentAssignmentRecordAdmin(admin.ModelAdmin):
-    list_display = ('student', 'assignment', 'score', 'submitted_at', 'is_submitted')
-    list_filter = ('assignment', 'is_submitted')
-    search_fields = ('student__username', 'assignment__title')
-    readonly_fields = ('responses', 'score', 'submitted_at')
+
