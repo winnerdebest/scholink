@@ -4,6 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
+    path('', include('academic_main.urls')),
     path('admin/', admin.site.urls),
     path('students/', include('stu_main.urls')),
     path('exam/', include('exams.urls')),

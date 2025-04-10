@@ -5,37 +5,48 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 import json
 from .models import *
+from academic_main.models import *
 from exams.models import *
+
+from stu_main.decorators import student_required
 
 
 
 @login_required
+@student_required
 def assignments(request):
     user = request.user
-    student = user.student_profile if hasattr(user, 'student_profile') else None
+    student = getattr(user, 'student_profile', None)
 
     if student and hasattr(student, 'student_class'):
         try:
+            active_term = ActiveTerm.get_active_term()
+
             class_subjects = ClassSubject.objects.filter(school_class=student.student_class)
 
-            # Get all active assignments for the student's class
+            # Filter active assignments by term
             all_active_assignments = Assignment.objects.filter(
                 class_subject__in=class_subjects,
-                is_active=True
+                is_active=True,
+                term=active_term  # 👈 Only assignments for the active term
             ).order_by('-created_at')
 
-            # Get all submitted records by the student - use user instead of student
+            # Submitted assignments by the student, filtered by term
             submitted_records = StudentAssignmentRecord.objects.filter(
-                student=user,  # Changed from student to user
-                is_submitted=True
-            ).select_related('assignment', 'assignment__class_subject', 
-                           'assignment__class_subject__subject', 
-                           'assignment__class_subject__school_class').order_by('-submitted_at')
+                student=user,
+                is_submitted=True,
+                term=active_term  # 👈 Only records for the active term
+            ).select_related(
+                'assignment',
+                'assignment__class_subject',
+                'assignment__class_subject__subject',
+                'assignment__class_subject__school_class'
+            ).order_by('-submitted_at')
 
-            # Get the IDs of assignments already submitted
+            # IDs of assignments already submitted
             submitted_assignment_ids = submitted_records.values_list('assignment_id', flat=True)
 
-            # Exclude submitted assignments from the active ones
+            # Assignments that are active and not submitted
             unsubmitted_assignments = all_active_assignments.exclude(id__in=submitted_assignment_ids)
 
         except Exception as e:
@@ -52,14 +63,15 @@ def assignments(request):
 
     context = {
         'student': student,
-        'assignments': unsubmitted_assignments,  # active + not submitted
-        'submitted_records': submitted_records,  # fully submitted
+        'assignments': unsubmitted_assignments,
+        'submitted_records': submitted_records,
     }
 
     return render(request, 'assignments/assignments.html', context)
 
 
 @login_required
+@student_required
 def take_assignment(request, assignment_id):
     """
     Load the assignment and its questions.
@@ -74,6 +86,7 @@ def take_assignment(request, assignment_id):
 
 
 @login_required
+@student_required
 def get_assignment_question(request, assignment_id, question_index):
     """
     Return one question for HTMX/AJAX.
@@ -92,6 +105,7 @@ def get_assignment_question(request, assignment_id, question_index):
 
 @csrf_exempt
 @login_required
+@student_required
 def save_assignment_answer(request):
     """
     Save student answers and submit assignment.
@@ -104,22 +118,30 @@ def save_assignment_answer(request):
             if not answers:
                 return JsonResponse({"error": "No answers submitted"}, status=400)
 
-            # Get the student user object
             student = request.user
 
-            # Get the first question to find the assignment
             first_question_id = list(answers.keys())[0]
             first_question = get_object_or_404(Question, id=first_question_id)
             assignment = first_question.assignment
 
+            # Get active term
+            active_term = ActiveTerm.get_active_term()
+
             record, created = StudentAssignmentRecord.objects.get_or_create(
                 student=student,
                 assignment=assignment,
-                defaults={"responses": {}, "score": 0, "is_submitted": False}
+                defaults={
+                    "responses": {},
+                    "score": 0,
+                    "is_submitted": False,
+                    "term": active_term  # 👈 Save the active term
+                }
             )
 
-            # Update the responses field with the answers
-            record.responses = answers  # Replace entirely instead of updating
+            if not created and not record.term:
+                record.term = active_term
+
+            record.responses = answers 
             record.save()
 
             return JsonResponse({"message": "Assignment submitted successfully"})
@@ -132,7 +154,9 @@ def save_assignment_answer(request):
     return JsonResponse({"error": "Invalid request method"}, status=400)
 
 
+
 @login_required
+@student_required
 def assignment_result(request, assignment_id):
     """
     Show student result after grading.

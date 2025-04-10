@@ -1,10 +1,12 @@
 from django.db import models
 from stu_main.models import *
 from assignments.models import *
+from academic_main.models import *
 
 
 class Exam(models.Model):
     class_subject = models.ForeignKey(ClassSubject, on_delete=models.CASCADE, related_name='exams', null=True, blank=True)
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='exams')
     duration_minutes = models.PositiveIntegerField()
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
@@ -48,6 +50,7 @@ class Question(models.Model):
 
 class StudentExamRecord(models.Model):
     student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'}, related_name='exam_records')
+    term = models.ForeignKey(Term, on_delete=models.SET_NULL, null=True, blank=True, related_name='exam_records')
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='student_records')
     responses = models.JSONField()  # Format: {"question_id": "A"}
     score = models.FloatField()

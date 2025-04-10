@@ -7,6 +7,7 @@ from django.utils.timezone import now
 import json
 
 from .models import *
+from academic_main.models import *
 from stu_main.models import CustomUser
 from .utils import exam_session_required
 
@@ -52,22 +53,36 @@ def available_exams_view(request):
     student = request.user
     student_class = student.student_profile.student_class
 
+    try:
+        active_term = ActiveTerm.get_active_term()
+    except AttributeError:
+        return render(request, 'exams/available_exams.html', {
+            'available_exams': [],
+            'completed_exams': [],
+            'error': "No active term has been set. Please contact the administrator."
+        })
+
+    # Exams the student hasn't done yet (in the active term)
     available_exams = Exam.objects.filter(
         class_subject__school_class=student_class,
-        is_active=True
+        is_active=True,
+        term=active_term
     ).exclude(
         student_records__student=student,
         student_records__is_submitted=True
     )
 
+    # Exams the student has completed (in the active term)
     completed_exams = Exam.objects.filter(
         student_records__student=student,
-        student_records__is_submitted=True
+        student_records__is_submitted=True,
+        term=active_term
     ).distinct()
 
     return render(request, 'exams/available_exams.html', {
         'available_exams': available_exams,
-        'completed_exams': completed_exams
+        'completed_exams': completed_exams,
+        'active_term': active_term
     })
 
 
@@ -104,10 +119,24 @@ def save_answer(request):
             first_question = get_object_or_404(Question, id=first_question_id)
             exam = first_question.exam
 
-            exam_record, _ = StudentExamRecord.objects.get_or_create(
-                student=student, exam=exam,
-                defaults={"responses": {}, "score": 0, "is_submitted": False}
+            # Get active term
+            
+            active_term = ActiveTerm.get_active_term()
+
+            exam_record, created = StudentExamRecord.objects.get_or_create(
+                student=student,
+                exam=exam,
+                defaults={
+                    "responses": {},
+                    "score": 0,
+                    "is_submitted": False,
+                    "term": active_term  # 👈 Save active term
+                }
             )
+
+            # If it already exists and term isn't set, update it
+            if not created and not exam_record.term:
+                exam_record.term = active_term
 
             responses = exam_record.responses or {}
             responses.update(answers)

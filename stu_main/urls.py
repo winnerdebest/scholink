@@ -8,4 +8,5 @@ urlpatterns = [
     path('profile/', profile, name='profile'),
     path("post/<int:post_id>/like/", like_post, name="like_post"),
     path("post/<int:post_id>/dislike/", dislike_post, name="dislike_post"),
+
 ]
