@@ -2,14 +2,31 @@ from django.db import models
 from stu_main.models import *
 
 
+class Exam(models.Model):
+    class_subject = models.ForeignKey(ClassSubject, on_delete=models.CASCADE, related_name='exams', null=True, blank=True)
+    duration_minutes = models.PositiveIntegerField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
 
-# This is the question model Which can either be a picture or text
+    def __str__(self):
+        return f"{self.class_subject} ({self.class_subject})"
+
+
+class Assignment(models.Model):
+    class_subject = models.ForeignKey(ClassSubject, on_delete=models.CASCADE, related_name='assignments', null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    def __str__(self):
+        return f"{self.class_subject} ({self.class_subject})"
+
+
 class Question(models.Model):
-    exam = models.ForeignKey('Exam', on_delete=models.CASCADE, related_name='questions', blank=True, null=True)
-    assignment = models.ForeignKey('Assignment', on_delete=models.CASCADE, related_name='questions', blank=True, null=True)
-    
-    text = models.TextField(blank=True, null=True)  # Can be a text question
-    image = models.ImageField(upload_to='question_images/', blank=True, null=True)  # Can be an image question
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='questions', blank=True, null=True)
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='questions', blank=True, null=True)
+
+    text = models.TextField(blank=True, null=True)
+    image = models.ImageField(upload_to='question_images/', blank=True, null=True)
 
     option_a_text = models.CharField(max_length=255, blank=True, null=True)
     option_a_image = models.ImageField(upload_to='answer_images/', blank=True, null=True)
@@ -27,64 +44,34 @@ class Question(models.Model):
         max_length=1,
         choices=[('A', 'A'), ('B', 'B'), ('C', 'C'), ('D', 'D')]
     )
-    
+
     created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, limit_choices_to={'user_type': 'teacher'})
 
     def __str__(self):
-        return self.text[:50] if self.text else "Image-based Question"
+        if self.text:
+            return self.text[:50]
+        return f"Image Question by {self.created_by.username}"
 
 
-
-
-#This is the exam model 
-class Exam(models.Model):
-    title = models.CharField(max_length=255)
-    teacher = models.ForeignKey(CustomUser, on_delete=models.CASCADE, limit_choices_to={'user_type': 'teacher'})
-    assigned_class = models.ForeignKey(Class, on_delete=models.CASCADE)
-    duration_minutes = models.PositiveIntegerField()
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return self.title
-
-#This is the assignment model
-class Assignment(models.Model):
-    title = models.CharField(max_length=255)
-    teacher = models.ForeignKey(CustomUser, on_delete=models.CASCADE, limit_choices_to={'user_type': 'teacher'})
-    assigned_class = models.ForeignKey(Class, on_delete=models.CASCADE)
-    due_date = models.DateTimeField()
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return self.title
-
-
-
-#Student exam record model
 class StudentExamRecord(models.Model):
-    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'})
-    exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
-    responses = models.JSONField()  # Stores answers as {"Q1": "A", "Q2": "C", ...}
+    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'}, related_name='exam_records')
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='student_records')
+    responses = models.JSONField()  # Format: {"question_id": "A"}
     score = models.FloatField()
     submitted_at = models.DateTimeField(auto_now_add=True)
     is_submitted = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.student.username} - {self.exam.title}"
+        return f"{self.student.username} - {self.exam.class_subject}"
 
 
-#Student assignment record model
 class StudentAssignmentRecord(models.Model):
-    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'})
-    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE)
+    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'}, related_name='assignment_records')
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='student_records')
     responses = models.JSONField()
     score = models.FloatField()
     submitted_at = models.DateTimeField(auto_now_add=True)
     is_submitted = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.student.username} - {self.assignment.title}"
-
-
+        return f"{self.student.username} - {self.assignment.class_subject}"

@@ -1,10 +1,66 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.http import JsonResponse
 import json
+from django.utils.timezone import now
 from .models import *
 
+from stu_main.models import CustomUser
 
 
+def exam_login_view(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')  # Get email from the form
+        password = request.POST.get('password')
+
+        try:
+            # Find the user by email in the CustomUser model
+            user = CustomUser.objects.get(email=email)
+            
+            # Authenticate using the username (CustomUser model uses username field)
+            user = authenticate(request, username=user.username, password=password)
+
+            if user and user.user_type == 'student':  # Ensure user is a student
+                login(request, user)
+                return redirect('available_exams')
+            else:
+                messages.error(request, "Only students can log in for exams.")
+        except CustomUser.DoesNotExist:
+            messages.error(request, "Invalid credentials.")
+
+    return render(request, 'exams/login.html')
+
+
+@login_required(login_url='exam_login')
+def available_exams_view(request):
+    student = request.user
+    student_class = student.student_profile.student_class
+
+    # Get available exams
+    available_exams = Exam.objects.filter(
+        class_subject__school_class=student_class,
+        is_active=True
+    ).exclude(
+        student_records__student=student,
+        student_records__is_submitted=True
+    )
+
+    # Get completed exams
+    completed_exams = Exam.objects.filter(
+        student_records__student=student,
+        student_records__is_submitted=True
+    ).distinct()
+
+    return render(request, 'exams/available_exams.html', {
+        'available_exams': available_exams,
+        'completed_exams': completed_exams
+    })
+
+
+
+@login_required(login_url='exam_login')
 def take_exam(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     questions = Question.objects.filter(exam=exam)

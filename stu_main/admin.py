@@ -1,6 +1,9 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, Class, Guardian, Student, StudentPost
+from .models import (
+    CustomUser, Class, Guardian, Student, StudentPost,
+    Subject, ClassSubject
+)
 
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
@@ -40,8 +43,19 @@ class StudentPostAdmin(admin.ModelAdmin):
     list_filter = ('created_at',)
     readonly_fields = ('created_at', 'updated_at')
 
+class SubjectAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code')
+    search_fields = ('name', 'code')
+
+class ClassSubjectAdmin(admin.ModelAdmin):
+    list_display = ('subject', 'school_class', 'teacher')
+    list_filter = ('school_class', 'subject')
+    search_fields = ('subject__name', 'school_class__name', 'teacher__username')
+
 admin.site.register(CustomUser, CustomUserAdmin)
 admin.site.register(Class, ClassAdmin)
 admin.site.register(Guardian, GuardianAdmin)
 admin.site.register(Student, StudentAdmin)
 admin.site.register(StudentPost, StudentPostAdmin)
+admin.site.register(Subject, SubjectAdmin)
+admin.site.register(ClassSubject, ClassSubjectAdmin)
