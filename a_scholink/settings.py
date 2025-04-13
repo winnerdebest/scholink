@@ -40,7 +40,7 @@ AUTH_USER_MODEL = 'stu_main.CustomUser'
 
 # Application definition
 INSTALLED_APPS = [
-    'stu_main',  # Move this to the top of the list
+    'stu_main',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

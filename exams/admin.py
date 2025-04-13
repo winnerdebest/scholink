@@ -26,7 +26,7 @@ class QuestionInline(admin.TabularInline):
 
 @admin.register(Exam)
 class ExamAdmin(admin.ModelAdmin):
-    list_display = ('class_subject', 'is_active', 'created_at')
+    list_display = ( 'class_subject', 'term', 'is_active', 'created_at')
     list_filter = ('class_subject', 'is_active')
     search_fields = ('title', 'class_subject__subject__name')
     inlines = [QuestionInline]
