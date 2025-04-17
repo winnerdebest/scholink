@@ -6,7 +6,7 @@ from academic_main.models import *
 class Assignment(models.Model):
     class_subject = models.ForeignKey(ClassSubject, on_delete=models.CASCADE, related_name='assignments', null=True, blank=True)
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='assignments')
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):

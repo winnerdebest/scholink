@@ -24,8 +24,8 @@ def user_login_view(request):
                 # Redirect to different dashboards based on user_type
                 if user.user_type == 'student':
                     return redirect('student_dashboard')
-                #elif user.user_type == 'teacher':
-                 #   return redirect('teachers:teacher_dashboard')
+                elif user.user_type == 'teacher':
+                   return redirect('teacher:teacher_dashboard')
                 #elif user.user_type == 'admin':
                     #return redirect('admin_dashboard:admin_dashboard')
                 #elif user.user_type == 'principal':

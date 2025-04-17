@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'exams',
     'assignments',
     'academic_main',
+    'teacher_logic',
 ]
 
 MIDDLEWARE = [

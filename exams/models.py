@@ -8,7 +8,7 @@ class Exam(models.Model):
     class_subject = models.ForeignKey(ClassSubject, on_delete=models.CASCADE, related_name='exams', null=True, blank=True)
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='exams')
     duration_minutes = models.PositiveIntegerField()
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):
