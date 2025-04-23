@@ -9,7 +9,7 @@ from django.forms import modelformset_factory
 BASE_INPUT = 'w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-800 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100'
 BASE_CHECKBOX = 'h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600'
 BASE_TEXTAREA = 'w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-800 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100'
-BASE_FILE = 'block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-100 file:text-primary-700 hover:file:bg-primary-200 dark:text-gray-400 dark:file:bg-primary-900 dark:file:text-primary-300'
+BASE_FILE = 'block w-full text-sm text-gray-600 file:bg-gray-100 file:border-0 file:py-2 file:px-4 file:rounded-lg file:text-gray-700 file:font-semibold hover:file:bg-gray-200 dark:text-gray-400 dark:file:bg-gray-800 dark:file:text-gray-200 dark:hover:file:bg-gray-600'
 
 class ExamForm(forms.ModelForm):
     class Meta:
@@ -37,7 +37,7 @@ class ExamForm(forms.ModelForm):
 class AssignmentForm(forms.ModelForm):
     class Meta:
         model = Assignment
-        fields = ['is_active']
+        fields = ['is_active', 'name']
         widgets = {
             'is_active': forms.CheckboxInput(attrs={
                 'class': BASE_CHECKBOX,
@@ -51,35 +51,37 @@ class QuestionForm(forms.ModelForm):
     class Meta:
         model = Question
         exclude = ['exam', 'assignment', 'created_by']
+        
         widgets = {
             'text': forms.Textarea(attrs={
-                'class': BASE_TEXTAREA,
-                'rows': 3,
+                'class': 'block w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-sm focus:border-purple-500 focus:ring focus:ring-purple-500 focus:ring-opacity-50',
+                'rows': 4,
                 'placeholder': 'Write the question here...'
             }),
             'option_a': forms.TextInput(attrs={
-                'class': BASE_INPUT,
+                'class': 'block w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-sm focus:border-purple-500 focus:ring focus:ring-purple-500 focus:ring-opacity-50',
                 'placeholder': 'Option A'
             }),
             'option_b': forms.TextInput(attrs={
-                'class': BASE_INPUT,
+                'class': 'block w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-sm focus:border-purple-500 focus:ring focus:ring-purple-500 focus:ring-opacity-50',
                 'placeholder': 'Option B'
             }),
             'option_c': forms.TextInput(attrs={
-                'class': BASE_INPUT,
+                'class': 'block w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-sm focus:border-purple-500 focus:ring focus:ring-purple-500 focus:ring-opacity-50',
                 'placeholder': 'Option C'
             }),
             'option_d': forms.TextInput(attrs={
-                'class': BASE_INPUT,
+                'class': 'block w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-sm focus:border-purple-500 focus:ring focus:ring-purple-500 focus:ring-opacity-50',
                 'placeholder': 'Option D'
             }),
             'correct_option': forms.Select(attrs={
-                'class': BASE_INPUT,
+                'class': 'block w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white shadow-sm focus:border-purple-500 focus:ring focus:ring-purple-500 focus:ring-opacity-50',
             }),
             'image': forms.ClearableFileInput(attrs={
-                'class': BASE_FILE
+                'class': BASE_FILE,
             }),
         }
+
         labels = {
             'text': 'Question',
             'option_a': 'Option A',
@@ -89,6 +91,7 @@ class QuestionForm(forms.ModelForm):
             'correct_option': 'Correct Answer',
             'image': 'Optional Image'
         }
+
 
 # Enhance delete checkbox styling in the formset
 class BaseQuestionFormSet(forms.BaseModelFormSet):

@@ -6,11 +6,13 @@ from academic_main.models import *
 class Assignment(models.Model):
     class_subject = models.ForeignKey(ClassSubject, on_delete=models.CASCADE, related_name='assignments', null=True, blank=True)
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='assignments')
+    name = models.CharField(max_length=255, default="Untitled Assignment")  # new field
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):
-        return f"{self.class_subject} ({self.class_subject})"
+        return f"{self.name} ({self.class_subject})"
+
 
   
 class StudentAssignmentRecord(models.Model):

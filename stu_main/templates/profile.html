@@ -4,15 +4,15 @@
 <br>
 <br>
 
-<div class="max-w-4xl mx-auto mt-8 p-6 bg-white shadow-lg rounded-lg">
+<div class="max-w-4xl mx-auto mt-8 p-6 bg-white dark:bg-gray-800 shadow-lg rounded-lg transition-colors duration-200">
     <!-- Header with Logout -->
     <div class="flex justify-between items-start mb-6">
         <div>
-            <h1 class="text-3xl font-bold text-gray-800">Student Profile</h1>
-            <p class="text-gray-600">View and manage your academic profile</p>
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Student Profile</h1>
+            <p class="text-gray-600 dark:text-gray-400">View and manage your academic profile</p>
         </div>
         <a href="{% url 'user_logout' %}" 
-           class="flex items-center text-red-600 hover:text-red-800 transition-colors"
+           class="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors"
            title="Logout">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -24,17 +24,17 @@
     <!-- Profile Card -->
     <div class="grid md:grid-cols-3 gap-8">
         <!-- Profile Info -->
-        <div class="md:col-span-2 bg-gray-50 p-6 rounded-lg shadow-inner">
+        <div class="md:col-span-2 bg-gray-50 dark:bg-gray-700 p-6 rounded-lg shadow-inner transition-colors duration-200">
             <div class="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
                 <img src="{{ student.photo.url }}" alt="Profile Picture" 
-                     class="w-32 h-32 rounded-full border-4 border-blue-200 object-cover shadow-md">
+                     class="w-32 h-32 rounded-full border-4 border-blue-200 dark:border-blue-600 object-cover shadow-md">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-800">{{ request.user.get_full_name|default:request.user.username }}</h2>
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white">{{ request.user.get_full_name|default:request.user.username }}</h2>
                     <div class="flex flex-wrap gap-4 mt-2">
-                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                        <span class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full text-sm font-medium transition-colors duration-200">
                             Class: {{ student.student_class.name }}
                         </span>
-                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                        <span class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-3 py-1 rounded-full text-sm font-medium transition-colors duration-200">
                             Rank: {{ rank }}
                         </span>
                     </div>
@@ -45,55 +45,53 @@
         <!-- Quick Actions -->
         <div class="space-y-4">
             <a href="{% url 'student_dashboard' %}" 
-               class="block w-full bg-blue-100 hover:bg-blue-200 text-blue-800 font-medium py-3 px-4 rounded-lg transition-colors flex items-center">
+               class="block w-full bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-800 dark:text-blue-200 font-medium py-3 px-4 rounded-lg transition-colors flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
                 </svg>
                 Back to Dashboard
             </a>
-            
-            
         </div>
     </div>
 
     <!-- Guardian Information -->
-    <div class="mt-8 bg-blue-50 p-6 rounded-lg shadow-inner border border-blue-100">
+    <div class="mt-8 bg-blue-50 dark:bg-blue-900 p-6 rounded-lg shadow-inner border border-blue-100 dark:border-blue-800 transition-colors duration-200">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-xl font-semibold text-blue-800 flex items-center">
+            <h3 class="text-xl font-semibold text-blue-800 dark:text-blue-200 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
                 Guardian Information
             </h3>
-            <span class="text-sm text-blue-600">Emergency Contact</span>
+            <span class="text-sm text-blue-600 dark:text-blue-300">Emergency Contact</span>
         </div>
         
         {% if guardian %}
         <div class="grid md:grid-cols-2 gap-4">
-            <div class="bg-white p-4 rounded-lg shadow-sm">
-                <p class="text-gray-500 text-sm">Full Name</p>
-                <p class="font-medium">{{ guardian.name }}</p>
+            <div class="bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm transition-colors duration-200">
+                <p class="text-gray-500 dark:text-gray-400 text-sm">Full Name</p>
+                <p class="font-medium dark:text-white">{{ guardian.name }}</p>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow-sm">
-                <p class="text-gray-500 text-sm">Phone Number</p>
-                <p class="font-medium">{{ guardian.phone_number }}</p>
+            <div class="bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm transition-colors duration-200">
+                <p class="text-gray-500 dark:text-gray-400 text-sm">Phone Number</p>
+                <p class="font-medium dark:text-white">{{ guardian.phone_number }}</p>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow-sm">
-                <p class="text-gray-500 text-sm">Email Address</p>
-                <p class="font-medium">{{ guardian.email }}</p>
+            <div class="bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm transition-colors duration-200">
+                <p class="text-gray-500 dark:text-gray-400 text-sm">Email Address</p>
+                <p class="font-medium dark:text-white">{{ guardian.email }}</p>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow-sm">
-                <p class="text-gray-500 text-sm">Relationship</p>
-                <p class="font-medium">{{ guardian.get_relationship_display }}</p>
+            <div class="bg-white dark:bg-gray-700 p-4 rounded-lg shadow-sm transition-colors duration-200">
+                <p class="text-gray-500 dark:text-gray-400 text-sm">Relationship</p>
+                <p class="font-medium dark:text-white">{{ guardian.get_relationship_display }}</p>
             </div>
         </div>
         {% else %}
         <div class="text-center py-6">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
-            <p class="mt-2 text-gray-500">No guardian details available</p>
-            <button class="mt-3 text-blue-600 hover:text-blue-800 font-medium">
+            <p class="mt-2 text-gray-500 dark:text-gray-400">No guardian details available</p>
+            <button class="mt-3 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium transition-colors duration-200">
                 Add Guardian Information
             </button>
         </div>

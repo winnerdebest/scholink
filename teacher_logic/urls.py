@@ -11,6 +11,20 @@ urlpatterns = [
     path("assignment/<int:assignment_id>/toggle/", toggle_assignment_active, name="toggle_assignment_active"),
     path("exam/<int:exam_id>/toggle/", toggle_exam_active, name="toggle_exam_active"),
 
-     path('subjects/<int:class_subject_id>/term/<int:term_id>/create-exam/', create_exam, name='create_exam'),
+    path('subjects/<int:class_subject_id>/term/<int:term_id>/create-exam/', create_exam, name='create_exam'),
     path('subjects/<int:class_subject_id>/term/<int:term_id>/create-assignment/', create_assignment, name='create_assignment'),
+
+    # Edit
+    path('exam/<int:exam_id>/edit/', edit_exam, name='edit_exam'),
+    path('assignment/<int:assignment_id>/edit/', edit_assignment, name='edit_assignment'),
+
+    # Delete
+    path('exam/<int:exam_id>/delete/', delete_exam, name='delete_exam'),
+    path('assignment/<int:assignment_id>/delete/', delete_assignment, name='delete_assignment'),
+
+    # Student Grade
+    path('class-subject/<int:class_subject_id>/students/', subject_student_list_view, name='subject_student_list'),
+    path("grade/<int:class_subject_id>/<int:student_id>/<int:term_id>/", grade_student, name="grade_student"),
+    path("edit_grade/<int:class_subject_id>/<int:student_id>/<int:term_id>/", edit_student_grade, name="edit_student_grade"),
+
 ]

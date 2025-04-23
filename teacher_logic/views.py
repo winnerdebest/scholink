@@ -3,12 +3,18 @@ from django.db.models import Prefetch
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.views.decorators.http import require_POST
+from django.urls import reverse
+from django.http import HttpResponseRedirect
+from django.forms import modelformset_factory
+from django.db.models import Count
+from django.contrib import messages
 
 #importing all models from other apps 
 from academic_main.models import *
 from exams.models import *
 from assignments.models import *
 from stu_main.models import *
+from .models import *
 
 #importing forms
 from .forms import *
@@ -62,8 +68,8 @@ def subject_detail_view(request, class_subject_id):
 
     active_term = ActiveTerm.get_active_term()
     
-    assignments = Assignment.objects.filter(class_subject=class_subject).order_by('-created_at')
-    exams = Exam.objects.filter(class_subject=class_subject).order_by('-created_at')
+    assignments = Assignment.objects.filter(class_subject=class_subject).annotate(submission_count=Count('student_records')).order_by('-created_at')
+    exams = Exam.objects.filter(class_subject=class_subject).annotate(submission_count=Count('student_records')).order_by('-created_at')
 
     student_assignment_records = StudentAssignmentRecord.objects.filter(assignment__in=assignments)
     student_exam_records = StudentExamRecord.objects.filter(exam__in=exams)
@@ -180,4 +186,346 @@ def create_assignment(request, class_subject_id, term_id):
         'question_formset': question_formset,
         'class_subject': class_subject,
         'term': term,
+    })
+
+
+
+# Edit Exam
+@login_required
+def edit_exam(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    class_subject = exam.class_subject
+    term = exam.term
+
+    QuestionFormSet = modelformset_factory(Question, form=QuestionForm, extra=0, can_delete=True)
+
+    if request.method == 'POST':
+        form = ExamForm(request.POST, instance=exam)
+        formset = QuestionFormSet(request.POST, request.FILES, queryset=exam.questions.all(), prefix='questions')
+
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            for question_form in formset:
+                if question_form.cleaned_data:
+                    if question_form.cleaned_data.get('DELETE'):
+                        if question_form.instance.pk:
+                            question_form.instance.delete()
+                    else:
+                        question = question_form.save(commit=False)
+                        question.exam = exam
+                        question.created_by = request.user
+                        question.save()
+            messages.success(request, 'Exam updated successfully.')
+            return redirect('teacher:class_subject_detail', class_subject.id)
+    else:
+        form = ExamForm(instance=exam)
+        formset = QuestionFormSet(queryset=exam.questions.all(), prefix='questions')
+
+    return render(request, 'dashboard/edit_exam.html', {
+        'form': form,
+        'question_formset': formset,
+        'class_subject': class_subject,
+        'term': term,
+        'exam': exam,
+    })
+
+# Delete Exam
+@login_required
+def delete_exam(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    class_subject_id = exam.class_subject.id
+
+    if request.method == 'POST':
+        exam.delete()
+        messages.success(request, 'Exam deleted successfully.')
+        return redirect('teacher:class_subject_detail', class_subject_id)
+
+    return render(request, 'dashboard/confirm_delete.html', {
+        'object': exam,
+        'type': 'exam',
+    })
+
+
+@login_required
+def edit_assignment(request, assignment_id):
+    assignment = get_object_or_404(Assignment, id=assignment_id)
+    class_subject = assignment.class_subject
+    term = assignment.term
+
+    QuestionFormSet = modelformset_factory(
+        Question, form=QuestionForm, extra=0, can_delete=True
+    )
+
+    if request.method == 'POST':
+        print("POST request received")
+
+        form = AssignmentForm(request.POST, instance=assignment)
+        formset = QuestionFormSet(
+            request.POST, request.FILES,
+            queryset=assignment.questions.all(), prefix='questions'
+        )
+
+        print("AssignmentForm valid:", form.is_valid())
+        print("AssignmentForm errors:", form.errors)
+        print("Formset valid:", formset.is_valid())
+        print("Formset errors:", formset.errors)
+
+        if form.is_valid() and formset.is_valid():
+            updated_assignment = form.save()
+            print("Assignment saved:", updated_assignment.name, updated_assignment.is_active)
+
+            for question_form in formset:
+                if question_form.cleaned_data:
+                    if question_form.cleaned_data.get('DELETE'):
+                        if question_form.instance.pk:
+                            question_form.instance.delete()
+                            print("Deleted question:", question_form.instance.pk)
+                    else:
+                        question = question_form.save(commit=False)
+                        question.assignment = assignment
+                        question.created_by = request.user
+                        question.save()
+                        print("Saved/Updated question:", question.id)
+
+            messages.success(request, 'Assignment updated successfully.')
+            return redirect('teacher:class_subject_detail', class_subject.id)
+        else:
+            messages.error(request, 'Please correct the errors below.')
+
+    else:
+        form = AssignmentForm(instance=assignment)
+        formset = QuestionFormSet(queryset=assignment.questions.all(), prefix='questions')
+
+    return render(request, 'dashboard/edit_assignment.html', {
+        'form': form,
+        'question_formset': formset,
+        'class_subject': class_subject,
+        'term': term,
+        'assignment': assignment,
+    })
+
+
+# Delete Assignment
+@login_required
+def delete_assignment(request, assignment_id):
+    assignment = get_object_or_404(Assignment, id=assignment_id)
+    class_subject_id = assignment.class_subject.id
+
+    if request.method == 'POST':
+        assignment.delete()
+        messages.success(request, 'Assignment deleted successfully.')
+        return redirect('teacher:class_subject_detail', class_subject_id)
+
+    return render(request, 'dashboard/confirm_delete.html', {
+        'object': assignment,
+        'type': 'assignment',
+    })
+
+
+
+
+
+@login_required
+def subject_student_list_view(request, class_subject_id):
+    class_subject = get_object_or_404(ClassSubject, id=class_subject_id)
+    school_class = class_subject.school_class
+
+    query = request.GET.get('q')
+    term_id = request.GET.get('term')
+
+    # Determine term to use
+    term = None
+    if term_id:
+        term = get_object_or_404(Term, id=term_id)
+    else:
+        try:
+            term = ActiveTerm.get_active_term()
+        except:
+            term = None  # Handle case where no ActiveTerm is defined
+
+    students = CustomUser.objects.filter(
+        user_type='student',
+        student_profile__student_class=school_class
+    )
+
+    if query:
+        students = students.filter(
+            Q(username__icontains=query) |
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query)
+        )
+
+    # Retrieve the grade summaries for the students
+    grade_summaries = SubjectGradeSummary.objects.filter(
+        class_subject=class_subject,
+        term=term,
+    )
+
+    # Create a dictionary to map student to their grade summary
+    grade_summary_dict = {summary.student.id: summary for summary in grade_summaries}
+
+    # Attach the grade summary to each student in the context
+    student_with_grades = []
+    for student in students:
+        grade_summary = grade_summary_dict.get(student.id)
+        student_with_grades.append({
+            'student': student,
+            'grade_summary': grade_summary
+        })
+
+    context = {
+        "student_with_grades": student_with_grades,
+        "class_subject": class_subject,
+        "term": term, 
+    }
+
+    return render(request, "grades/class_subject_students.html", context)
+
+
+
+
+# Importing it here because its the only view that needed it 
+from django.db.models import Sum
+
+@login_required
+def grade_student(request, class_subject_id, student_id, term_id):
+    class_subject = get_object_or_404(ClassSubject, id=class_subject_id)
+    student = get_object_or_404(CustomUser, id=student_id, user_type='student')
+    term = get_object_or_404(Term, id=term_id)
+
+    # Aggregate internal scores
+    total_internal_assignment = StudentAssignmentRecord.objects.filter(
+        student=student,
+        assignment__class_subject=class_subject,
+        term=term,
+        is_submitted=True
+    ).aggregate(score_sum=Sum('score'))['score_sum'] or 0
+
+    total_internal_exam = StudentExamRecord.objects.filter(
+        student=student,
+        exam__class_subject=class_subject,
+        term=term,
+        is_submitted=True
+    ).aggregate(score_sum=Sum('score'))['score_sum'] or 0
+
+    if request.method == 'POST':
+        # Read and validate scores
+        try:
+            external_exam_score = float(request.POST.get('external_exam_score'))
+            external_assignment_score = float(request.POST.get('external_assignment_score'))
+            external_test_score = float(request.POST.get('external_test_score'))
+        except (ValueError, TypeError):
+            messages.error(request, "All external scores must be valid numbers.")
+            return redirect(request.path)
+
+        # Check for invalid entries over 100
+        scores = {
+            "External Exam": external_exam_score,
+            "External Assignment": external_assignment_score,
+            "External Test": external_test_score,
+        }
+
+        for label, score in scores.items():
+            if not 0 <= score <= 100:
+                messages.error(request, f"{label} score must be between 0 and 100.")
+                return redirect(request.path)
+
+        # Save/update grade summary
+        SubjectGradeSummary.objects.update_or_create(
+            student=student,
+            class_subject=class_subject,
+            term=term,
+            defaults={
+                'total_exam_score': total_internal_exam,
+                'external_exam_score': external_exam_score,
+                'total_assignment_score': total_internal_assignment,
+                'external_assignment_score': external_assignment_score,
+                'external_test_score': external_test_score,
+            }
+        )
+
+        messages.success(request, "Student grades updated successfully.")
+        return redirect('teacher:subject_student_list', class_subject_id=class_subject.id)
+
+    return render(request, 'grades/grade_student.html', {
+        'student': student,
+        'class_subject': class_subject,
+        'term': term,
+        'internal_exam_score': total_internal_exam,
+        'internal_assignment_score': total_internal_assignment,
+    })
+
+
+
+
+# Edit Grade View 
+@login_required
+def edit_student_grade(request, class_subject_id, student_id, term_id):
+    class_subject = get_object_or_404(ClassSubject, id=class_subject_id)
+    student = get_object_or_404(CustomUser, id=student_id, user_type='student')
+    term = get_object_or_404(Term, id=term_id)
+
+    # Get grade summary if it exists
+    grade_summary = get_object_or_404(
+        SubjectGradeSummary,
+        student=student,
+        class_subject=class_subject,
+        term=term
+    )
+
+    # Always recalculate internal scores
+    total_internal_assignment = StudentAssignmentRecord.objects.filter(
+        student=student,
+        assignment__class_subject=class_subject,
+        term=term,
+        is_submitted=True
+    ).aggregate(score_sum=Sum('score'))['score_sum'] or 0
+
+    total_internal_exam = StudentExamRecord.objects.filter(
+        student=student,
+        exam__class_subject=class_subject,
+        term=term,
+        is_submitted=True
+    ).aggregate(score_sum=Sum('score'))['score_sum'] or 0
+
+    if request.method == 'POST':
+        try:
+            external_exam_score = float(request.POST.get('external_exam_score'))
+            external_assignment_score = float(request.POST.get('external_assignment_score'))
+            external_test_score = float(request.POST.get('external_test_score'))
+        except (ValueError, TypeError):
+            messages.error(request, "All external scores must be valid numbers.")
+            return redirect(request.path)
+
+        # Validate score ranges
+        for label, score in {
+            "External Exam": external_exam_score,
+            "External Assignment": external_assignment_score,
+            "External Test": external_test_score,
+        }.items():
+            if not 0 <= score <= 100:
+                messages.error(request, f"{label} score must be between 0 and 100.")
+                return redirect(request.path)
+
+        # Update the existing grade summary
+        grade_summary.total_exam_score = total_internal_exam
+        grade_summary.total_assignment_score = total_internal_assignment
+        grade_summary.external_exam_score = external_exam_score
+        grade_summary.external_assignment_score = external_assignment_score
+        grade_summary.external_test_score = external_test_score
+        grade_summary.save()
+
+        messages.success(request, "Grades successfully updated.")
+        return redirect('teacher:subject_student_list', class_subject.id)
+
+    return render(request, 'grades/edit_grade.html', {
+        'student': student,
+        'class_subject': class_subject,
+        'term': term,
+        'grade_summary': grade_summary,
+        'internal_exam_score': total_internal_exam,
+        'internal_assignment_score': total_internal_assignment,
+        'external_exam_score': grade_summary.external_exam_score,
+        'external_assignment_score': grade_summary.external_assignment_score,
+        'external_test_score': grade_summary.external_test_score,
     })

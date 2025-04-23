@@ -40,6 +40,7 @@ AUTH_USER_MODEL = 'stu_main.CustomUser'
 
 # Application definition
 INSTALLED_APPS = [
+    # Kept here because of custom user migration
     'stu_main',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -47,10 +48,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Apps
     'exams',
     'assignments',
     'academic_main',
     'teacher_logic',
+    # Packages 
+    'django_htmx',
 ]
 
 MIDDLEWARE = [
@@ -61,6 +65,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Htmx Middleware
+    'django_htmx.middleware.HtmxMiddleware',
 ]
 
 ROOT_URLCONF = 'a_scholink.urls'
