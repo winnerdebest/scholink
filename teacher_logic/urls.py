@@ -27,4 +27,12 @@ urlpatterns = [
     path("grade/<int:class_subject_id>/<int:student_id>/<int:term_id>/", grade_student, name="grade_student"),
     path("edit_grade/<int:class_subject_id>/<int:student_id>/<int:term_id>/", edit_student_grade, name="edit_student_grade"),
 
+    # Form Master 
+    path('class-posts/', class_posts_view, name='class_posts'),
+    path('delete-post/<int:post_id>/', delete_post, name='delete_post'),
+    path('no-class-assigned/', no_class_assigned, name='no_class_assigned'),
+    
+    path('coming_soon/', upcoming_feature, name='upcoming_feature')
+
+
 ]

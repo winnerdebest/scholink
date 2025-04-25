@@ -38,7 +38,7 @@ class StudentAdmin(admin.ModelAdmin):
     list_filter = ('student_class',)
 
 class StudentPostAdmin(admin.ModelAdmin):
-    list_display = ('student', 'created_at', 'total_likes')
+    list_display = ('student', 'created_at', 'total_likes',)
     search_fields = ('student__user__username', 'content')
     list_filter = ('created_at',)
     readonly_fields = ('created_at', 'updated_at')

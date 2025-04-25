@@ -1,3 +1,4 @@
+#imports 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Prefetch
 from django.contrib.auth.decorators import login_required
@@ -393,7 +394,7 @@ def grade_student(request, class_subject_id, student_id, term_id):
     student = get_object_or_404(CustomUser, id=student_id, user_type='student')
     term = get_object_or_404(Term, id=term_id)
 
-    # Aggregate internal scores
+    # Aggregate internal scores (for display only)
     total_internal_assignment = StudentAssignmentRecord.objects.filter(
         student=student,
         assignment__class_subject=class_subject,
@@ -409,16 +410,14 @@ def grade_student(request, class_subject_id, student_id, term_id):
     ).aggregate(score_sum=Sum('score'))['score_sum'] or 0
 
     if request.method == 'POST':
-        # Read and validate scores
         try:
-            external_exam_score = float(request.POST.get('external_exam_score'))
-            external_assignment_score = float(request.POST.get('external_assignment_score'))
-            external_test_score = float(request.POST.get('external_test_score'))
+            external_exam_score = float(request.POST.get('external_exam_score') or 0)
+            external_assignment_score = float(request.POST.get('external_assignment_score') or 0)
+            external_test_score = float(request.POST.get('external_test_score') or 0)
         except (ValueError, TypeError):
             messages.error(request, "All external scores must be valid numbers.")
             return redirect(request.path)
 
-        # Check for invalid entries over 100
         scores = {
             "External Exam": external_exam_score,
             "External Assignment": external_assignment_score,
@@ -430,15 +429,13 @@ def grade_student(request, class_subject_id, student_id, term_id):
                 messages.error(request, f"{label} score must be between 0 and 100.")
                 return redirect(request.path)
 
-        # Save/update grade summary
+        # Save/update only the external scores
         SubjectGradeSummary.objects.update_or_create(
             student=student,
             class_subject=class_subject,
             term=term,
             defaults={
-                'total_exam_score': total_internal_exam,
                 'external_exam_score': external_exam_score,
-                'total_assignment_score': total_internal_assignment,
                 'external_assignment_score': external_assignment_score,
                 'external_test_score': external_test_score,
             }
@@ -529,3 +526,53 @@ def edit_student_grade(request, class_subject_id, student_id, term_id):
         'external_assignment_score': grade_summary.external_assignment_score,
         'external_test_score': grade_summary.external_test_score,
     })
+
+
+
+@login_required
+def class_posts_view(request):
+    user = request.user
+
+    if user.user_type != 'teacher':
+        return redirect('unauthorized')  
+    
+    user_class = Class.objects.filter(form_master=user).first()
+    if not user_class:
+        return redirect('teacher:no_class_assigned')  # Or show a message
+
+    posts = StudentPost.objects.filter(
+        student__student_class=user_class
+    ) | StudentPost.objects.filter(
+        created_by=user
+    )
+
+    if request.method == 'POST':
+        content = request.POST.get('content')
+        if content:
+            StudentPost.objects.create(
+                content=content,
+                created_by=user
+            )
+        return redirect('teacher:class_posts')
+
+    return render(request, 'form_master/class_posts.html', {'posts': posts, 'form_master': user})
+
+
+
+@login_required
+def delete_post(request, post_id):
+    post = get_object_or_404(StudentPost, id=post_id)
+    
+    
+    post.delete()
+    
+    return redirect('teacher:class_posts')
+
+
+
+def no_class_assigned(request):
+    return render(request, 'form_master/no_class_assigned.html')
+
+
+def upcoming_feature(request):
+    return render(request, "dashboard/upcoming.html")

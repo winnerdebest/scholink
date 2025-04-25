@@ -8,5 +8,7 @@ urlpatterns = [
     path('profile/', profile, name='profile'),
     path("post/<int:post_id>/like/", like_post, name="like_post"),
     path("post/<int:post_id>/dislike/", dislike_post, name="dislike_post"),
+    path('results/', student_term_results_overview, name='term_overview'),
+    path("results/<int:term_id>/", student_result_view, name="student_result_view")
 
 ]

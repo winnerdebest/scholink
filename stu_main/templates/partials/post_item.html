@@ -31,6 +31,11 @@
                 <div class="flex items-center space-x-2">
                     <h4 class="font-semibold dark:text-white">{{ post.student.user.username }}</h4>
                     <span class="text-gray-500 dark:text-gray-400 text-sm">{{ post.created_at|timesince }} ago</span>
+                    
+                    <!-- Badge for Form Master Posts -->
+                    {% if post.is_form_master_post %}
+                        <span class="text-sm text-gray-500 dark:text-gray-300 bg-blue-100 dark:bg-blue-700 px-2 py-1 rounded-full">Form Master</span>
+                    {% endif %}
                 </div>
                 <p class="mt-2 text-gray-700 dark:text-gray-300">{{ post.content }}</p>
                 

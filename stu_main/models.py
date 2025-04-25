@@ -14,6 +14,14 @@ class CustomUser(AbstractUser):
 
 class Class(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    form_master = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        limit_choices_to={'user_type': 'teacher'},
+        related_name='form_master_classes'
+    )
 
     def __str__(self):
         return self.name
@@ -29,7 +37,7 @@ class Subject(models.Model):
 
 
 class ClassSubject(models.Model):
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, null=True, blank=True)
     school_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name="class_subjects")
     teacher = models.ForeignKey(
         CustomUser,
@@ -44,6 +52,7 @@ class ClassSubject(models.Model):
 
     def __str__(self):
         return f"{self.subject.name} - {self.school_class.name}"
+    
 
 
 class Guardian(models.Model):
@@ -73,7 +82,8 @@ class Student(models.Model):
 
 
 class StudentPost(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="posts")
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="posts", null=True, blank=True)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, related_name="created_posts", null=True, blank=True)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -88,3 +98,6 @@ class StudentPost(models.Model):
 
     def total_dislikes(self):
         return self.dislikes.count()
+    
+    def is_form_master_post(self):
+        return self.created_by.user_type == "teacher" and not self.student

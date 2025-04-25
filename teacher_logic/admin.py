@@ -31,3 +31,11 @@ class SubjectGradeSummaryAdmin(admin.ModelAdmin):
         return obj.total_score
     calculated_total_score.short_description = "Total Score"
     calculated_total_score.admin_order_field = None  # Not sortable
+
+
+@admin.register(ClassGradeSummary)
+class ClassGradeSummaryAdmin(admin.ModelAdmin):
+    list_display = ('student', 'term', 'student_class', 'average_score', 'rank',)
+    list_filter = ('term', 'student_class')
+    search_fields = ('student__first_name', 'student__last_name', 'student__username')
+    ordering = ('rank',)

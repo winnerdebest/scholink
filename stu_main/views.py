@@ -5,6 +5,7 @@ from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 import json
+from django.db.models import Q
 from .models import *
 from exams.models import *
 
@@ -58,19 +59,29 @@ def user_logout_view(request):
 @student_required
 def student_dashboard(request):
     user = request.user
-    student = user.student_profile if hasattr(user, 'student_profile') else None
+    student = getattr(user, 'student_profile', None)
 
     if student:
-        # Filter posts by the student's class
-        posts = StudentPost.objects.filter(student__student_class=student.student_class).order_by('-created_at')
+        student_class = student.student_class
+        
+        # Query for all posts for the student's class, including form master posts
+        posts = StudentPost.objects.filter(
+            Q(student__student_class=student_class) |
+            Q(created_by=student_class.form_master)
+        ).order_by('-created_at')
     else:
-        posts = StudentPost.objects.none()  # If no student profile, show no posts
+        posts = StudentPost.objects.none()
+
+    # Get the active term
+    active_term = ActiveTerm.get_active_term()
 
     context = {
         'user': user,
         'student': student,
         'posts': posts,
+        'term': active_term,
     }
+
     return render(request, 'dashboard.html', context)
 
 
@@ -79,13 +90,23 @@ def student_dashboard(request):
 def create_post(request):
     if request.method == "POST":
         content = request.POST.get("content")
-        if content and hasattr(request.user, 'student_profile'):
-            post = StudentPost.objects.create(
-                student=request.user.student_profile, 
-                content=content
-            )
-            return render(request, "partials/post_item.html", {"post": post})
-        return JsonResponse({"error": "Invalid request"}, status=400)
+        user = request.user
+
+        if not content:
+            return JsonResponse({"error": "Content cannot be empty."}, status=400)
+
+        post_data = {
+            "content": content,
+            "created_by": user,
+        }
+
+        # If the user is a student, attach their student profile
+        if hasattr(user, "student_profile"):
+            post_data["student"] = user.student_profile
+
+        post = StudentPost.objects.create(**post_data)
+        return render(request, "partials/post_item.html", {"post": post})
+
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
@@ -96,20 +117,21 @@ def like_post(request, post_id):
         post = get_object_or_404(StudentPost, id=post_id)
         student = request.user.student_profile
 
-        if student in post.likes.all():
+        if post.likes.filter(id=student.id).exists():
             post.likes.remove(student)
             liked = False
         else:
             post.likes.add(student)
-            post.dislikes.remove(student)
+            post.dislikes.remove(student)  # Remove from dislikes if previously disliked
             liked = True
 
         return JsonResponse({
-            "liked": liked, 
-            "disliked": student in post.dislikes.all(),
-            "total_likes": post.likes.count(), 
+            "liked": liked,
+            "disliked": post.dislikes.filter(id=student.id).exists(),
+            "total_likes": post.likes.count(),
             "total_dislikes": post.dislikes.count()
         })
+
     return HttpResponseBadRequest()
 
 
@@ -120,21 +142,23 @@ def dislike_post(request, post_id):
         post = get_object_or_404(StudentPost, id=post_id)
         student = request.user.student_profile
 
-        if student in post.dislikes.all():
+        if post.dislikes.filter(id=student.id).exists():
             post.dislikes.remove(student)
             disliked = False
         else:
             post.dislikes.add(student)
-            post.likes.remove(student)
+            post.likes.remove(student)  # Remove from likes if previously liked
             disliked = True
 
         return JsonResponse({
-            "liked": student in post.likes.all(),
-            "disliked": disliked, 
-            "total_likes": post.likes.count(), 
+            "liked": post.likes.filter(id=student.id).exists(),
+            "disliked": disliked,
+            "total_likes": post.likes.count(),
             "total_dislikes": post.dislikes.count()
         })
+
     return HttpResponseBadRequest()
+
 
 
 @login_required
@@ -143,6 +167,8 @@ def profile(request):
     # Get the current user's student profile
     user = request.user
     student = user.student_profile if hasattr(user, 'student_profile') else None
+    subject_summaries = SubjectGradeSummary.objects.filter(student=request.user)
+
     
     # If the student profile exists, fetch the guardian information
     guardian = None
@@ -154,8 +180,44 @@ def profile(request):
     context = {
         'student': student,
         'guardian': guardian,
-        'rank': rank
+        'rank': rank,
+        'subject_summaries' : subject_summaries,
     }
     
     return render(request, 'profile.html', context)
 
+
+
+#Importing cause this is the only view that used it 
+from teacher_logic.models import SubjectGradeSummary, ClassGradeSummary
+# This is for the results 
+
+@login_required
+@student_required
+def student_term_results_overview(request):
+    student = get_object_or_404(Student, user=request.user)
+    terms_with_results = Term.objects.filter(subject_grade_summaries__student=request.user).distinct()
+
+    return render(request, 'results/term_overview.html', {
+        'student': student,
+        'terms': terms_with_results
+    })
+
+
+
+@login_required
+@student_required
+def student_result_view(request, term_id):
+    student = get_object_or_404(Student, user=request.user)
+    term = get_object_or_404(Term, id=term_id)
+    subject_summaries = SubjectGradeSummary.objects.filter(student=request.user, term=term)
+
+    class_summary = ClassGradeSummary.objects.filter(student=request.user, term=term).first()
+
+    context = {
+        'student': student,
+        'term': term,
+        'subject_summaries': subject_summaries,
+        'class_summary': class_summary
+    }
+    return render(request, 'results/student_result.html', context)

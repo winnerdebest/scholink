@@ -52,7 +52,7 @@ INSTALLED_APPS = [
     'exams',
     'assignments',
     'academic_main',
-    'teacher_logic',
+    'teacher_logic.apps.TeacherLogicConfig',
     # Packages 
     'django_htmx',
 ]

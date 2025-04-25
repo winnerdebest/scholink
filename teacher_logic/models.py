@@ -1,8 +1,10 @@
 from django.db import models
+from django.utils import timezone
 
 # All models import 
-from stu_main.models import CustomUser, ClassSubject
-from academic_main.models import Term
+from stu_main.models import *
+from academic_main.models import *
+
 
 
 class SubjectGradeSummary(models.Model):
@@ -11,7 +13,7 @@ class SubjectGradeSummary(models.Model):
     term = models.ForeignKey(Term, on_delete=models.SET_NULL, related_name='subject_grade_summaries', null=True, blank=True)
 
     external_exam_score = models.FloatField(default=0)
-    external_assignment_score = models.FloatField(default=0)
+    external_assignment_score = models.FloatField(default=0)   
     external_test_score = models.FloatField(default=0)
 
     def get_internal_exam_average(self):
@@ -53,3 +55,20 @@ class SubjectGradeSummary(models.Model):
 
     def __str__(self):
         return f"{self.student} - {self.class_subject} - {self.term}"
+
+
+# This stores the Grade summary for all subjects for the student 
+class ClassGradeSummary(models.Model):
+    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='class_grade_summaries')
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='class_grade_summaries')
+    student_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='grade_summaries')
+
+    average_score = models.FloatField(blank=True, null=True)
+    rank = models.PositiveIntegerField(blank=True, null=True)
+
+    class Meta:
+        unique_together = ('student', 'term', 'student_class')
+        ordering = ['-average_score'] 
+
+    def __str__(self):
+        return f"{self.student.get_full_name()} - {self.term} - Rank {self.rank}"
