@@ -34,6 +34,26 @@ CSRF_TRUSTED_ORIGINS = ["https://*.ngrok-free.app",]
 
 CORS_ALLOW_ALL_ORIGINS = True
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'student_creation.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
+
+
 # AUTH for Students
 AUTH_USER_MODEL = 'stu_main.CustomUser'
 
@@ -52,6 +72,7 @@ INSTALLED_APPS = [
     'exams',
     'assignments',
     'academic_main',
+    'principal',
     'teacher_logic.apps.TeacherLogicConfig',
     # Packages 
     'django_htmx',
@@ -130,6 +151,10 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
+
+
+
+LOGIN_URL = '/login/'
 
 
 # Static files (CSS, JavaScript, Images)

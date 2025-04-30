@@ -28,8 +28,8 @@ def user_login_view(request):
                    return redirect('teacher:teacher_dashboard')
                 #elif user.user_type == 'admin':
                     #return redirect('admin_dashboard:admin_dashboard')
-                #elif user.user_type == 'principal':
-                    #return redirect('principals:principal_dashboard')
+                elif user.user_type == 'principal':
+                    return redirect('principals:principal_dashboard')
                 else:
                     messages.error(request, "Invalid user type.")
                     return redirect('user_login')
@@ -46,3 +46,6 @@ def user_logout_view(request):
     logout(request)
     return redirect('user_login')
 
+
+def index(request):
+    return render(request, 'index.html')

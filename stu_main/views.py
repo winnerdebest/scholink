@@ -14,47 +14,6 @@ from .decorators import student_required
  
 
 
-def user_login_view(request):
-    if request.method == "POST":
-        email = request.POST.get("email")
-        password = request.POST.get("password")
-
-        try:
-            # Find the user by email
-            user = CustomUser.objects.get(email=email)
-            
-            # Authenticate the user
-            user = authenticate(request, username=user.username, password=password)
-
-            if user is not None:
-                login(request, user)
-                
-                # Redirect to different dashboards based on user_type
-                if user.user_type == 'student':
-                    return redirect('student_dashboard')
-                #elif user.user_type == 'teacher':
-                 #   return redirect('teachers:teacher_dashboard')
-                #elif user.user_type == 'admin':
-                    #return redirect('admin_dashboard:admin_dashboard')
-                #elif user.user_type == 'principal':
-                    #return redirect('principals:principal_dashboard')
-                else:
-                    messages.error(request, "Invalid user type.")
-                    return redirect('user_login')
-            else:
-                messages.error(request, "Invalid credentials. Please try again.")
-        except CustomUser.DoesNotExist:
-            messages.error(request, "No user found with this email.")
-
-    return render(request, "login.html")
-
-
-@login_required
-def user_logout_view(request):
-    logout(request)
-    return redirect('user_login')
-
-
 @login_required
 @student_required
 def student_dashboard(request):
@@ -221,3 +180,31 @@ def student_result_view(request, term_id):
         'class_summary': class_summary
     }
     return render(request, 'results/student_result.html', context)
+
+
+from django.utils.timezone import now
+
+@login_required
+def leaderboard(request, class_id):
+    # Get the current term (you can customize this logic if you have multiple terms)
+    current_term = ActiveTerm.get_active_term()
+
+    
+    if not current_term:
+        # Handle the case when no current term is found (optional)
+        return render(request, 'leaderboard.html', {'error': 'No current term found.'})
+
+    # Get the class
+    selected_class = Class.objects.get(id=class_id)
+
+    # Get the grade summaries for students in this class and the current term
+    grade_summaries = ClassGradeSummary.objects.filter(
+        student_class=selected_class,
+        term=current_term
+    ).order_by('rank')  # Ordering by rank (highest first)
+
+    return render(request, 'leaderboard.html', {
+        'class': selected_class,
+        'grade_summaries': grade_summaries,
+        'current_term': current_term,
+    })

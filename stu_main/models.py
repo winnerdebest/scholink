@@ -91,7 +91,11 @@ class StudentPost(models.Model):
     dislikes = models.ManyToManyField(Student, related_name="disliked_posts", blank=True)
 
     def __str__(self):
-        return f"Post by {self.student.user.get_full_name()}"
+        if self.student:
+            return f"Post by {self.student.user.get_full_name()}"
+        elif self.created_by:
+            return f"Post by {self.created_by.get_full_name()}"
+        return "Post"
 
     def total_likes(self):
         return self.likes.count()
@@ -100,4 +104,5 @@ class StudentPost(models.Model):
         return self.dislikes.count()
     
     def is_form_master_post(self):
-        return self.created_by.user_type == "teacher" and not self.student
+        return self.created_by is not None and self.created_by.user_type == "teacher" and not self.student
+

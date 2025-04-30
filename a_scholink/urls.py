@@ -10,6 +10,7 @@ urlpatterns = [
     path('exam/', include('exams.urls')),
     path('teacher/', include('teacher_logic.urls')),
     path('assignments/', include('assignments.urls')),
+    path('principal/', include('principal.urls')),
 
 ]
 

@@ -6,3 +6,4 @@ code/
 media/
 static/
 node/
+*.log

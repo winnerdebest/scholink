@@ -13,6 +13,7 @@ from django.contrib import messages
 #importing all models from other apps 
 from academic_main.models import *
 from exams.models import *
+from academic_main.decorators import role_required
 from assignments.models import *
 from stu_main.models import *
 from .models import *
@@ -22,6 +23,7 @@ from .forms import *
 
 
 @login_required
+@role_required('teacher')
 def teacher_dashboard(request):
     teacher = request.user
 
@@ -46,6 +48,7 @@ def teacher_dashboard(request):
 
 
 @login_required
+@role_required('teacher')
 def teacher_class_detail(request, class_id):
     teacher = request.user
     school_class = get_object_or_404(Class, id=class_id)
@@ -62,8 +65,8 @@ def teacher_class_detail(request, class_id):
     })
 
 
-
 @login_required
+@role_required('teacher')
 def subject_detail_view(request, class_subject_id):
     class_subject = get_object_or_404(ClassSubject, id=class_subject_id)
 
@@ -101,7 +104,8 @@ def subject_detail_view(request, class_subject_id):
 
 
 
-
+@login_required
+@role_required('teacher')
 @require_POST
 def toggle_assignment_active(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
@@ -110,6 +114,8 @@ def toggle_assignment_active(request, assignment_id):
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @require_POST
+@login_required
+@role_required('teacher')
 def toggle_exam_active(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     exam.is_active = not exam.is_active
@@ -119,6 +125,7 @@ def toggle_exam_active(request, exam_id):
 
 
 @login_required
+@role_required('teacher')
 def create_exam(request, class_subject_id, term_id):
     class_subject = get_object_or_404(ClassSubject, id=class_subject_id)
     term = get_object_or_404(Term, id=term_id)
@@ -193,6 +200,7 @@ def create_assignment(request, class_subject_id, term_id):
 
 # Edit Exam
 @login_required
+@role_required('teacher')
 def edit_exam(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     class_subject = exam.class_subject
@@ -232,6 +240,7 @@ def edit_exam(request, exam_id):
 
 # Delete Exam
 @login_required
+@role_required('teacher')
 def delete_exam(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     class_subject_id = exam.class_subject.id
@@ -248,6 +257,7 @@ def delete_exam(request, exam_id):
 
 
 @login_required
+@role_required('teacher')
 def edit_assignment(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
     class_subject = assignment.class_subject
@@ -306,8 +316,8 @@ def edit_assignment(request, assignment_id):
     })
 
 
-# Delete Assignment
 @login_required
+@role_required('teacher')
 def delete_assignment(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
     class_subject_id = assignment.class_subject.id
@@ -324,9 +334,8 @@ def delete_assignment(request, assignment_id):
 
 
 
-
-
 @login_required
+@role_required('teacher')
 def subject_student_list_view(request, class_subject_id):
     class_subject = get_object_or_404(ClassSubject, id=class_subject_id)
     school_class = class_subject.school_class
@@ -384,11 +393,11 @@ def subject_student_list_view(request, class_subject_id):
 
 
 
-
 # Importing it here because its the only view that needed it 
 from django.db.models import Sum
 
 @login_required
+@role_required('teacher')
 def grade_student(request, class_subject_id, student_id, term_id):
     class_subject = get_object_or_404(ClassSubject, id=class_subject_id)
     student = get_object_or_404(CustomUser, id=student_id, user_type='student')
@@ -453,10 +462,9 @@ def grade_student(request, class_subject_id, student_id, term_id):
     })
 
 
-
-
 # Edit Grade View 
 @login_required
+@role_required('teacher')
 def edit_student_grade(request, class_subject_id, student_id, term_id):
     class_subject = get_object_or_404(ClassSubject, id=class_subject_id)
     student = get_object_or_404(CustomUser, id=student_id, user_type='student')
@@ -530,6 +538,7 @@ def edit_student_grade(request, class_subject_id, student_id, term_id):
 
 
 @login_required
+@role_required('teacher')
 def class_posts_view(request):
     user = request.user
 
@@ -560,6 +569,7 @@ def class_posts_view(request):
 
 
 @login_required
+@role_required('teacher')
 def delete_post(request, post_id):
     post = get_object_or_404(StudentPost, id=post_id)
     
@@ -568,8 +578,8 @@ def delete_post(request, post_id):
     
     return redirect('teacher:class_posts')
 
-
-
+@login_required
+@role_required('teacher')
 def no_class_assigned(request):
     return render(request, 'form_master/no_class_assigned.html')
 
