@@ -1,4 +1,6 @@
 from django.db import models
+from django.conf import settings
+
 
 class Term(models.Model):
     name = models.CharField(max_length=50)  # E.g., "First Term", "Second Term"
@@ -17,3 +19,16 @@ class ActiveTerm(models.Model):
     @classmethod
     def get_active_term(cls):
         return cls.objects.first().term
+    
+
+
+
+class School(models.Model):
+    principal = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    logo = models.ImageField(upload_to='school_logos/')
+    address = models.TextField()
+    email = models.EmailField()
+
+    def __str__(self):
+        return self.name

@@ -2,8 +2,22 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
+from .forms import PrincipalRegistrationForm
 from .models import *
-from exams.models import *
+from stu_main.models import *
+
+
+
+def register_principal(request):
+    if request.method == 'POST':
+        form = PrincipalRegistrationForm(request.POST, request.FILES)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            return redirect('principal:principal_dashboard') 
+    else:
+        form = PrincipalRegistrationForm()
+    return render(request, 'principal_register.html', {'form': form})
 
 
 def user_login_view(request):
@@ -29,7 +43,7 @@ def user_login_view(request):
                 #elif user.user_type == 'admin':
                     #return redirect('admin_dashboard:admin_dashboard')
                 elif user.user_type == 'principal':
-                    return redirect('principals:principal_dashboard')
+                    return redirect('principal:principal_dashboard')
                 else:
                     messages.error(request, "Invalid user type.")
                     return redirect('user_login')
@@ -47,5 +61,8 @@ def user_logout_view(request):
     return redirect('user_login')
 
 
+
+
 def index(request):
     return render(request, 'index.html')
+

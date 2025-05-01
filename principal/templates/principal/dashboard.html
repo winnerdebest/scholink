@@ -41,22 +41,29 @@
             <div class="mb-8">
                 <h2 class="text-xl font-bold text-gray-800 dark:text-white mb-4">Quick Actions</h2>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <button class="bg-primary-600 hover:bg-primary-700 text-white py-4 px-2 rounded-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col items-center shadow-md hover:shadow-lg">
-                        <i class="fas fa-user-graduate text-2xl mb-2"></i>
-                        <span>Register Student</span>
-                    </button>
-                    <button class="bg-primary-600 hover:bg-primary-700 text-white py-4 px-2 rounded-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col items-center shadow-md hover:shadow-lg">
-                        <i class="fas fa-chalkboard-teacher text-2xl mb-2"></i>
-                        <span>Add Teacher</span>
-                    </button>
-                    <button class="bg-primary-600 hover:bg-primary-700 text-white py-4 px-2 rounded-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col items-center shadow-md hover:shadow-lg">
-                        <i class="fas fa-bullhorn text-2xl mb-2"></i>
-                        <span>New Announcement</span>
-                    </button>
-                    <button class="bg-primary-600 hover:bg-primary-700 text-white py-4 px-2 rounded-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col items-center shadow-md hover:shadow-lg">
+                    
+                        <a href="{% url "principal:create_student" %}" class="bg-primary-600 hover:bg-primary-700 text-white py-4 px-2 rounded-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col items-center shadow-md hover:shadow-lg">
+                            <i class="fas fa-user-graduate text-2xl mb-2"></i>
+                            <span>Register Student</span>
+                        </a>
+                    
+                    
+                        <a href="{% url "principal:create_teacher" %}" class="bg-primary-600 hover:bg-primary-700 text-white py-4 px-2 rounded-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col items-center shadow-md hover:shadow-lg">
+                            <i class="fas fa-chalkboard-teacher text-2xl mb-2"></i>
+                            <span>Add Teacher</span>
+                        </a>
+                    
+                    
+                        <a href="#" class="bg-primary-600 hover:bg-primary-700 text-white py-4 px-2 rounded-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col items-center shadow-md hover:shadow-lg">
+                            <i class="fas fa-bullhorn text-2xl mb-2"></i>
+                            <span>New Announcement</span>
+                        </a>
+                    
+                    
+                    <a href="{% url "principal:class_list" %}" class="bg-primary-600 hover:bg-primary-700 text-white py-4 px-2 rounded-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col items-center shadow-md hover:shadow-lg">
                         <i class="fas fa-tasks text-2xl mb-2"></i>
                         <span>Assign Classes</span>
-                    </button>
+                    </a>
                 </div>
             </div>
 
