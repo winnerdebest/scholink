@@ -11,8 +11,8 @@
         <span class="block font-medium mb-1">Select New Teacher</span>
         <select name="teacher" class="w-full border rounded px-3 py-2">
             {% for teacher in teachers %}
-            <option value="{{ teacher.id }}" {% if teacher == class_subject.teacher %}selected{% endif %}>
-                {{ teacher.get_full_name }}
+            <option value="{{ teacher.user.id }}" {% if teacher.user.id == class_subject.teacher.id %}selected{% endif %}>
+                {{ teacher.user.get_full_name }}
             </option>
             {% endfor %}
         </select>

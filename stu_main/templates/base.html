@@ -26,7 +26,18 @@
 <body class="bg-gray-100 dark:bg-gray-900 flex flex-col min-h-screen transition-colors duration-200">
     <!-- Header -->
     <header class="bg-white dark:bg-gray-800 p-4 shadow-md flex justify-between items-center w-full fixed top-0 left-0 z-50 transition-colors duration-200">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Scholink</h3>
+        <div class="flex items-center space-x-2">
+            {% if school.logo %}
+                <img src="{{ school.logo.url }}" alt="{{ school.name }}" class="h-8 w-8 rounded-full object-cover">
+            {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+            {% endif %}
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+                {{ school.name|default:"Scholink" }}
+            </h3>
+        </div>
         <div class="flex items-center space-x-4">
             <!-- Display Logged-in User's Full Name -->
             <span class="text-lg font-semibold text-gray-800 dark:text-gray-200">

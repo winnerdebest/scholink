@@ -34,4 +34,6 @@ urlpatterns = [
     path("classes/<int:class_id>/edit/", edit_class, name="edit_class"),
     path("classes/<int:class_id>/delete/", delete_class, name="delete_class"),
 
+    path("grade_customize/", grade_customize, name="grade_customize"),
+    path("settings/", settings_view, name="settings")
 ]

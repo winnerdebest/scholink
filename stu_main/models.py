@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from academic_main.models import School
 
 
 class CustomUser(AbstractUser):
@@ -9,11 +10,20 @@ class CustomUser(AbstractUser):
         ('teacher', 'Teacher'),
         ('student', 'Student'),
     )
-    user_type = models.CharField(max_length=10, choices=USER_TYPES, default='student')
+    user_type = models.CharField(max_length=10, choices=USER_TYPES, default='principal')
+
+class Teacher(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    #salary = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    def __str__(self):
+        return self.user.get_full_name()
 
 
 class Class(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="classes")
     form_master = models.ForeignKey(
         CustomUser,
         on_delete=models.SET_NULL,
@@ -23,29 +33,27 @@ class Class(models.Model):
         related_name='form_master_classes'
     )
 
+    class Meta:
+        unique_together = ('name', 'school')
+
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.school.name})"
 
 
 class Subject(models.Model):
     name = models.CharField(max_length=100)
-    code = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="subjects")
+    code = models.CharField(max_length=20, null=True, blank=True)
     description = models.TextField(blank=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.school.name})"
 
 
 class ClassSubject(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, null=True, blank=True)
     school_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name="class_subjects")
-    teacher = models.ForeignKey(
-        CustomUser,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        limit_choices_to={'user_type': 'teacher'}
-    )
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name="class_subjects")
 
     class Meta:
         unique_together = ('subject', 'school_class')
@@ -79,7 +87,11 @@ class Student(models.Model):
 
     def __str__(self):
         return f"{self.user.get_full_name()} - {self.student_class}"
-
+    
+    @property
+    def school(self):
+        return self.student_class.school if self.student_class else None
+    
 
 class StudentPost(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="posts", null=True, blank=True)
@@ -89,6 +101,7 @@ class StudentPost(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     likes = models.ManyToManyField(Student, related_name="liked_posts", blank=True)
     dislikes = models.ManyToManyField(Student, related_name="disliked_posts", blank=True)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, null=True, blank=True, related_name='posts')
 
     def __str__(self):
         if self.student:

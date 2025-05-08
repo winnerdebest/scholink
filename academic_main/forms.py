@@ -41,3 +41,7 @@ class PrincipalRegistrationForm(UserCreationForm):
             username = f"{base}{random.randint(100, 999)}"
             if not CustomUser.objects.filter(username=username).exists():
                 return username
+            
+
+
+

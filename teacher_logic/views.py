@@ -25,7 +25,7 @@ from .forms import *
 @login_required
 @role_required('teacher')
 def teacher_dashboard(request):
-    teacher = request.user
+    teacher = Teacher.objects.get(user=request.user)
 
     # Fetch all ClassSubjects assigned to this teacher
     assigned_subjects = ClassSubject.objects.filter(teacher=teacher).select_related('subject', 'school_class')
@@ -50,7 +50,7 @@ def teacher_dashboard(request):
 @login_required
 @role_required('teacher')
 def teacher_class_detail(request, class_id):
-    teacher = request.user
+    teacher = Teacher.objects.get(user=request.user)
     school_class = get_object_or_404(Class, id=class_id)
 
     # Get only the subjects THIS teacher handles for that class
@@ -141,7 +141,7 @@ def create_exam(request, class_subject_id, term_id):
             exam.save()
 
             for question_form in question_formset:
-                if question_form.cleaned_data:  # skip empty forms
+                if question_form.cleaned_data:  
                     question = question_form.save(commit=False)
                     question.exam = exam
                     question.created_by = request.user

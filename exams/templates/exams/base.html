@@ -40,7 +40,13 @@
                         <p class="text-sm font-semibold text-gray-700">{{ request.user.get_full_name }}</p>
                         <p class="text-xs text-gray-500">{{ request.user.student_profile.student_class.name }}</p>
                     </div>
-                    <img class="h-9 w-9 rounded-full bg-gray-200" src={{request.user.student_profile.photo.url}} alt="Profile" />
+                    {% if request.user.student_profile.photo %}
+  <img class="h-9 w-9 rounded-full bg-gray-200" src="{{ request.user.student_profile.photo.url }}" alt="Profile" />
+{% else %}
+  <div class="h-9 w-9 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+    N/A
+  </div>
+{% endif %}
                 </div>
             </div>
         </div>

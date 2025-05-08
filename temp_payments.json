@@ -1,0 +1,17 @@
+[
+  {
+    "student_id": 12,
+    "user_id": 22,
+    "amount_paid": "20000",
+    "paid_at": "2025-05-05T09:07:59.077294",
+    "status": "paid"
+  },
+  {
+    "student_id": 17,
+    "user_id": 35,
+    "amount_paid": "20000",
+    "paid_at": "2025-05-08T11:26:23.291075",
+    "status": "paid"
+  }
+  
+]

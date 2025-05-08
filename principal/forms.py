@@ -12,3 +12,14 @@ class StudentCreationForm(forms.ModelForm):
     class Meta:
         model = Student
         fields = ['first_name', 'last_name', 'email', 'photo', 'phone_number', 'student_class']
+
+
+class UserSettingsForm(forms.ModelForm):
+    class Meta:
+        model = CustomUser
+        fields = ["first_name", "last_name", "email"]
+
+class SchoolSettingsForm(forms.ModelForm):
+    class Meta:
+        model = School
+        fields = ["name", "logo", "address", "email"]

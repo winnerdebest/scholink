@@ -19,6 +19,7 @@ from .decorators import student_required
 def student_dashboard(request):
     user = request.user
     student = getattr(user, 'student_profile', None)
+    school = student.school if student else None
 
     if student:
         student_class = student.student_class
@@ -39,6 +40,7 @@ def student_dashboard(request):
         'student': student,
         'posts': posts,
         'term': active_term,
+        'school': school,
     }
 
     return render(request, 'dashboard.html', context)
@@ -120,6 +122,8 @@ def dislike_post(request, post_id):
 
 
 
+from .utils import get_all_payments  # Make sure this is imported
+
 @login_required
 @student_required
 def profile(request):
@@ -128,22 +132,70 @@ def profile(request):
     student = user.student_profile if hasattr(user, 'student_profile') else None
     subject_summaries = SubjectGradeSummary.objects.filter(student=request.user)
 
-    
-    # If the student profile exists, fetch the guardian information
+    # Guardian info
     guardian = None
     if student:
         guardian = Guardian.objects.filter(students=student).first()  
 
+    # Dummy rank
     rank = "1st"  
-    
+
+    # Payment history from temp_payments.json
+    all_payments = get_all_payments()
+    student_payments = sorted([
+    {
+        'date': p.get('paid_at'),
+        'amount': p.get('amount_paid'),
+        'method': 'Manual',
+        'status': p.get('status'),
+    }
+    for p in all_payments
+    if str(p.get('student_id')) == str(student.id)
+    ], key=lambda x: datetime.strptime(x['date'], '%Y-%m-%dT%H:%M:%S.%f'), reverse=True)
+
     context = {
         'student': student,
         'guardian': guardian,
         'rank': rank,
-        'subject_summaries' : subject_summaries,
+        'subject_summaries': subject_summaries,
+        'payments': student_payments,
     }
-    
+
     return render(request, 'profile.html', context)
+
+
+
+
+
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from .utils import store_payment
+from datetime import datetime
+
+@login_required
+def pay_school_fees(request, student_id):
+    if request.method == 'POST':
+        amount_paid = request.POST.get('amount')
+
+        # Prepare payment data
+        payment_data = {
+            'student_id': student_id,
+            'user_id': request.user.id,
+            'amount_paid': amount_paid,
+            'paid_at': datetime.now().isoformat(),
+            'status': 'paid'
+        }
+
+        # Save to JSON file
+        store_payment(payment_data)
+
+        messages.success(request, 'Payment successful!')
+
+        return redirect('profile')
+
+
 
 
 

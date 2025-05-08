@@ -38,42 +38,55 @@
         </div>
     </div>
 
-    <!-- Email Action Bar -->
-    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div>
-                <h3 class="text-lg font-medium text-blue-800 dark:text-blue-200">Bulk Actions</h3>
-                <p class="text-sm text-blue-600 dark:text-blue-300">Manage multiple students at once</p>
+    <!-- Filters and Bulk Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <!-- Filters -->
+        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div class="flex flex-wrap gap-3 items-center">
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Filters:</span>
+                <select class="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1 text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option>All Classes</option>
+                    {% for class in classes %}
+                    <option>{{ class.name }}</option>
+                    {% endfor %}
+                </select>
+                <select class="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1 text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option>All Fee Statuses</option>
+                    <option>Paid</option>
+                    <option>Partial</option>
+                    <option>Unpaid</option>
+                    <option>Overdue</option>
+                </select>
+                <button class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors">
+                    Apply
+                </button>
             </div>
-            <div class="flex flex-wrap gap-2">
-                <button onclick="selectAllStudents()" 
-                        class="px-3 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center">
-                    <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Select All
-                </button>
-                <button onclick="deselectAllStudents()" 
-                        class="px-3 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center">
-                    <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    Deselect All
-                </button>
-                <button onclick="showEmailModal()" 
-                        class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white transition-colors flex items-center">
-                    <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    Email Selected
-                </button>
-                <button onclick="exportSelected()" 
-                        class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded-lg text-sm text-white transition-colors flex items-center">
-                    <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Export
-                </button>
+        </div>
+        
+        <!-- Bulk Actions -->
+        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-lg font-medium text-blue-800 dark:text-blue-200">Bulk Actions</h3>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="selectAllStudents()" 
+                            class="px-3 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center">
+                        Select All
+                    </button>
+                    <button onclick="deselectAllStudents()" 
+                            class="px-3 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center">
+                        Deselect All
+                    </button>
+                    <button onclick="showEmailModal()" 
+                            class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white transition-colors flex items-center">
+                        Email Selected
+                    </button>
+                    <button onclick="exportSelected()" 
+                            class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded-lg text-sm text-white transition-colors flex items-center">
+                        Export
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -90,6 +103,7 @@
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Student</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Class</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Contact</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fee Status</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -127,13 +141,38 @@
                             <div class="text-sm text-gray-500 dark:text-gray-400">{{ student.phone_number|default:"-" }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
+                            {% if student.fee_status == 'paid' %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                Paid
+                            </span>
+                            {% elif student.fee_status == 'partial' %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                Partial
+                            </span>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                ${{ student.paid_amount }} of ${{ student.total_fees }}
+                            </div>
+                            {% elif student.fee_status == 'overdue' %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                Overdue
+                            </span>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Due {{ student.due_date|date:"M d" }}
+                            </div>
+                            {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                Unpaid
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                                 Active
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex items-center space-x-3">
-                                <a href="{% url "principal:edit_student" student.pk %}" 
+                                <a href="{% url 'principal:edit_student' student.pk %}" 
                                    class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
                                    title="Edit">
                                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -147,7 +186,14 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                     </svg>
                                 </a>
-                                <a href="{% url "principal:delete_student" student.pk %}" 
+                                <a href="#" 
+                                   class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                                   title="Record Payment">
+                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </a>
+                                <a href="{% url 'principal:delete_student' student.pk %}" 
                                    class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                                    title="Delete">
                                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -159,7 +205,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                             No students found. {% if query %}Try a different search term.{% else %}Add your first student.{% endif %}
                         </td>
                     </tr>

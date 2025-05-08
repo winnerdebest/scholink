@@ -5,7 +5,12 @@
         <div class="flex items-center space-x-6 mb-6">
             <!-- Student Profile Section -->
             <div class="flex items-center">
-                <img class="h-16 w-16 rounded-full object-cover" src="{{ request.user.student_profile.photo.url }}" alt="Student Profile Picture">
+                {% if request.user.student_profile.photo %}
+  <img class="h-16 w-16 rounded-full object-cover" src="{{ request.user.student_profile.photo.url }}" alt="Student Profile Picture">
+{% else %}
+  None
+{% endif %}
+
                 <div class="ml-4">
                     <p class="text-xl font-semibold">{{ request.user.first_name }} {{ request.user.last_name }}</p>
                     <p class="text-gray-600">{{ request.user.username }}</p>
