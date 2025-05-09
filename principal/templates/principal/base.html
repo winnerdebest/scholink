@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Principal Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <script>
@@ -52,26 +53,95 @@
                             <i class="fas fa-tachometer-alt mr-3"></i> Dashboard
                         </div>
                     </a>
-                    <a href="{% url "principal:create_student" %}">
-                        <div class="p-3 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer flex items-center transition-colors">
-                            <i class="fas fa-user-graduate mr-3"></i> Register Students
+
+                    <!-- Students Dropdown -->
+                    <div class="relative" x-data="{ open: false }">
+                        <div @click="open = !open" class="p-3 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer flex items-center justify-between transition-colors">
+                            <div class="flex items-center">
+                                <i class="fas fa-user-graduate mr-3"></i> Students
+                            </div>
+                            <i class="fas fa-chevron-down transition-transform" :class="{ 'transform rotate-180': open }"></i>
                         </div>
-                    </a>
-                    <a href="{% url "principal:create_teacher" %}">
-                        <div class="p-3 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer flex items-center transition-colors">
-                            <i class="fas fa-chalkboard-teacher mr-3"></i> Register Teachers
+                        <div x-show="open" class="pl-8 mt-2 space-y-2">
+                            <a href="{% url "principal:create_student" %}">
+                                <div class="p-2 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors">
+                                    Register Student
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div class="p-2 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors">
+                                    View Students
+                                </div>
+                            </a>
                         </div>
-                    </a>
-                    <a href="{% url "principal:create_subject" %}">
-                        <div class="p-3 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer flex items-center transition-colors">
-                            <i class="fas fa-book mr-3"></i> Create Subjects
+                    </div>
+
+                    <!-- Teachers Dropdown -->
+                    <div class="relative" x-data="{ open: false }">
+                        <div @click="open = !open" class="p-3 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer flex items-center justify-between transition-colors">
+                            <div class="flex items-center">
+                                <i class="fas fa-chalkboard-teacher mr-3"></i> Teachers
+                            </div>
+                            <i class="fas fa-chevron-down transition-transform" :class="{ 'transform rotate-180': open }"></i>
                         </div>
-                    </a>
-                    <a href="{% url "principal:create_class" %}">
-                        <div class="p-3 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer flex items-center transition-colors">
-                            <i class="fas fa-school mr-3"></i> Create Classes
+                        <div x-show="open" class="pl-8 mt-2 space-y-2">
+                            <a href="{% url "principal:create_teacher" %}">
+                                <div class="p-2 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors">
+                                    Register Teacher
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div class="p-2 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors">
+                                    View Teachers
+                                </div>
+                            </a>
                         </div>
-                    </a>
+                    </div>
+
+                    <!-- Subjects Dropdown -->
+                    <div class="relative" x-data="{ open: false }">
+                        <div @click="open = !open" class="p-3 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer flex items-center justify-between transition-colors">
+                            <div class="flex items-center">
+                                <i class="fas fa-book mr-3"></i> Subjects
+                            </div>
+                            <i class="fas fa-chevron-down transition-transform" :class="{ 'transform rotate-180': open }"></i>
+                        </div>
+                        <div x-show="open" class="pl-8 mt-2 space-y-2">
+                            <a href="{% url "principal:create_subject" %}">
+                                <div class="p-2 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors">
+                                    Create Subject
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div class="p-2 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors">
+                                    View Subjects
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Classes Dropdown -->
+                    <div class="relative" x-data="{ open: false }">
+                        <div @click="open = !open" class="p-3 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer flex items-center justify-between transition-colors">
+                            <div class="flex items-center">
+                                <i class="fas fa-school mr-3"></i> Classes
+                            </div>
+                            <i class="fas fa-chevron-down transition-transform" :class="{ 'transform rotate-180': open }"></i>
+                        </div>
+                        <div x-show="open" class="pl-8 mt-2 space-y-2">
+                            <a href="{% url "principal:create_class" %}">
+                                <div class="p-2 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors">
+                                    Create Class
+                                </div>
+                            </a>
+                            <a href="{% url "principal:class_list" %}">
+                                <div class="p-2 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors">
+                                    View Classes
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
                     <a href="{% url "principal:grade_customize" %}">
                         <div class="p-3 hover:bg-primary-700 dark:hover:bg-gray-700 rounded-lg cursor-pointer flex items-center transition-colors">
                             <i class="fas fa-percentage mr-3"></i> Customize Grade

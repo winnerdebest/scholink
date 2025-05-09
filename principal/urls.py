@@ -35,5 +35,23 @@ urlpatterns = [
     path("classes/<int:class_id>/delete/", delete_class, name="delete_class"),
 
     path("grade_customize/", grade_customize, name="grade_customize"),
-    path("settings/", settings_view, name="settings")
+    path("settings/", settings_view, name="settings"), 
+
+
+    path("expenses/", expense_list, name="expense_list"),
+    path("expenses/create/", create_expense, name="create_expense"),
+    path("expenses/<int:expense_id>/edit/", edit_expense, name="edit_expense"),
+    path("expenses/<int:expense_id>/delete/", delete_expense, name="delete_expense"),
+    path("expenses/export/excel/", export_expenses_excel, name="export_expenses_excel"),
+    path("expenses/export/pdf/", export_expenses_pdf, name="export_expenses_pdf"),
+
+    # Teacher Salary URLs
+    path("teacher-salaries/", teacher_salaries, name="teacher_salaries"),
+    path("teacher-salaries/<int:teacher_id>/update/", update_salary_payment, name="update_salary_payment"),
+    path("teacher-salaries/process-bulk/", process_bulk_payment, name="process_bulk_payment"),
+
+    # Announcement URLs
+    path('announcements/create/', create_announcement, name='create_announcement'),
+    path('announcements/<int:pk>/edit/', edit_announcement, name='edit_announcement'),
+    path('announcements/<int:pk>/delete/', delete_announcement, name='delete_announcement'),
 ]

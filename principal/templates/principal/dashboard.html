@@ -1,4 +1,6 @@
 {% extends "principal/base.html" %}
+{% load humanize %}
+{% load static %}
 
 
 {% block content %}
@@ -16,23 +18,31 @@
                 </a>
                 <a href="{% url "principal:teacher_list" %}" class="block">
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center hover:shadow-lg transition-shadow duration-300">
-                        <h3 class="text-gray-500 dark:text-gray-300 text-sm font-medium">Total Teachers</h3>
+                        <h3 class="text-gray-500 dark:text-gray-300 text-sm font-medium">Total Staff</h3>
                         <p class="text-3xl font-bold text-gray-800 dark:text-white my-2">{{ total_teachers }}</p>
                         <p class="text-green-500 text-xs">+2 new this month</p>
                     </div>
                 </a>
-                <a href="{% url "principal:class_list" %}" class="block">
+
+                <a href="#" class="block">
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center hover:shadow-lg transition-shadow duration-300">
-                        <h3 class="text-gray-500 dark:text-gray-300 text-sm font-medium">Classes</h3>
-                        <p class="text-3xl font-bold text-gray-800 dark:text-white my-2"> {{ total_classes}} </p>
-                        <p class="text-gray-500 dark:text-gray-400 text-xs">6 forms with 5-6 streams each</p>
+                        <h3 class="text-gray-500 dark:text-gray-300 text-sm font-medium">Total Revenue</h3>
+                        <p class="text-3xl font-bold text-gray-800 dark:text-white my-2">{{ total_revenue|default:"KES 0" }}</p>
+                        <p class="text-green-500 text-xs">+12% from last month</p>
                     </div>
                 </a>
-                <a href="{% url "principal:subject_list" %}" class="block">
+
+                <a href="{% url "principal:expense_list" %}" class="block">
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center hover:shadow-lg transition-shadow duration-300">
-                        <h3 class="text-gray-500 dark:text-gray-300 text-sm font-medium">Subjects</h3>
-                        <p class="text-3xl font-bold text-gray-800 dark:text-white my-2"> {{total_subjects}} </p>
-                        <p class="text-gray-500 dark:text-gray-400 text-xs">Core + Electives</p>
+                        <h3 class="text-gray-500 dark:text-gray-300 text-sm font-medium">Total Expenses</h3>
+                        <h3 class="text-2xl font-bold text-gray-800 dark:text-white">₦{{ total_expenses|floatformat:2|intcomma }}</h3>
+                        {% if expense_change_percentage > 0 %}
+                            <p class="text-red-500 text-xs">+{{ expense_change_percentage|floatformat:1 }}% from last month</p>
+                        {% elif expense_change_percentage < 0 %}
+                            <p class="text-green-500 text-xs">{{ expense_change_percentage|floatformat:1 }}% from last month</p>
+                        {% else %}
+                            <p class="text-gray-500 text-xs">No change from last month</p>
+                        {% endif %}
                     </div>
                 </a>
             </div>
@@ -54,7 +64,7 @@
                         </a>
                     
                     
-                        <a href="#" class="bg-primary-600 hover:bg-primary-700 text-white py-4 px-2 rounded-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col items-center shadow-md hover:shadow-lg">
+                        <a href="{% url 'principal:create_announcement' %}" class="bg-primary-600 hover:bg-primary-700 text-white py-4 px-2 rounded-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col items-center shadow-md hover:shadow-lg">
                             <i class="fas fa-bullhorn text-2xl mb-2"></i>
                             <span>New Announcement</span>
                         </a>
@@ -71,25 +81,54 @@
             <div class="mb-8">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-bold text-gray-800 dark:text-white">Recent Announcements</h2>
-                    <button class="text-primary-600 dark:text-primary-400 hover:underline">View All</button>
+                    <a href="{% url 'principal:create_announcement' %}" class="text-primary-600 dark:text-primary-400 hover:underline flex items-center">
+                        <i class="fas fa-plus mr-2"></i>
+                        <span>New Announcement</span>
+                    </a>
                 </div>
                 <div class="space-y-4">
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-md transition-shadow duration-300 cursor-pointer">
-                        <div class="flex justify-between">
-                            <h3 class="font-bold text-gray-800 dark:text-white">Staff Meeting Tomorrow</h3>
-                            <i class="fas fa-ellipsis-v text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"></i>
+                    {% for announcement in announcements %}
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-md transition-shadow duration-300">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <h3 class="font-bold text-gray-800 dark:text-white">{{ announcement.title }}</h3>
+                                    <span class="px-2 py-1 text-xs rounded-full 
+                                        {% if announcement.priority == 'high' %}
+                                            bg-red-100 text-red-800
+                                        {% elif announcement.priority == 'medium' %}
+                                            bg-yellow-100 text-yellow-800
+                                        {% else %}
+                                            bg-blue-100 text-blue-800
+                                        {% endif %}">
+                                        {{ announcement.get_priority_display }}
+                                    </span>
+                                </div>
+                                <p class="text-gray-500 dark:text-gray-300 text-sm mb-2">
+                                    Posted: {{ announcement.created_at|date:"F j, Y, g:i a" }}
+                                    {% if announcement.expiry_date %}
+                                    <span class="text-gray-400"> • Expires: {{ announcement.expiry_date|date:"F j, Y" }}</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <a href="{% url 'principal:edit_announcement' announcement.pk %}" 
+                                   class="text-primary-600 hover:text-primary-800 dark:hover:text-primary-400">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'principal:delete_announcement' announcement.pk %}" 
+                                   class="text-red-600 hover:text-red-800">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
                         </div>
-                        <p class="text-gray-500 dark:text-gray-300 text-sm mb-2">Posted: Today, 10:30 AM</p>
-                        <p class="text-gray-700 dark:text-gray-300">All teaching staff are required to attend the monthly staff meeting tomorrow at 2:30 PM in the conference hall.</p>
+                        <p class="text-gray-700 dark:text-gray-300 mt-2">{{ announcement.content }}</p>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-md transition-shadow duration-300 cursor-pointer">
-                        <div class="flex justify-between">
-                            <h3 class="font-bold text-gray-800 dark:text-white">Parent-Teacher Conference</h3>
-                            <i class="fas fa-ellipsis-v text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"></i>
-                        </div>
-                        <p class="text-gray-500 dark:text-gray-300 text-sm mb-2">Posted: Yesterday, 3:15 PM</p>
-                        <p class="text-gray-700 dark:text-gray-300">The next parent-teacher conference is scheduled for Friday. Please prepare your reports and feedback.</p>
+                    {% empty %}
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-center">
+                        <p class="text-gray-500 dark:text-gray-400">No announcements yet</p>
                     </div>
+                    {% endfor %}
                 </div>
             </div>
 
