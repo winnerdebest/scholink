@@ -3,6 +3,9 @@ from stu_main.models import *
 from assignments.models import *
 from academic_main.models import *
 
+from django.conf import settings
+from cloudinary.models import CloudinaryField
+
 
 class Exam(models.Model):
     class_subject = models.ForeignKey(ClassSubject, on_delete=models.CASCADE, related_name='exams', null=True, blank=True)
@@ -21,19 +24,44 @@ class Question(models.Model):
     assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='questions', blank=True, null=True)
 
     text = models.TextField(blank=True, null=True)
-    image = models.ImageField(upload_to='question_images/', blank=True, null=True)
+    if settings.USE_CLOUDINARY:
+        image = CloudinaryField('question_images/', transformation=[
+                {'width': 800, 'height': 800, 'crop': 'limit', 'quality': 'auto', 'fetch_format': 'webp'}
+            ], default='static/student-example3.jpg')
+    else:
+        image = models.ImageField(upload_to='question_images/', blank=True, null=True)
 
     option_a_text = models.CharField(max_length=255, blank=True, null=True)
-    option_a_image = models.ImageField(upload_to='answer_images/', blank=True, null=True)
+    if settings.USE_CLOUDINARY:
+        option_a_image = CloudinaryField('answer_images/', transformation=[
+                {'width': 800, 'height': 800, 'crop': 'limit', 'quality': 'auto', 'fetch_format': 'webp'}
+            ], default='static/student-example3.jpg')
+    else:
+        option_a_image = models.ImageField(upload_to='answer_images/', blank=True, null=True)
 
     option_b_text = models.CharField(max_length=255, blank=True, null=True)
-    option_b_image = models.ImageField(upload_to='answer_images/', blank=True, null=True)
+    if settings.USE_CLOUDINARY:
+        option_b_image = CloudinaryField('answer_images/', transformation=[
+                {'width': 800, 'height': 800, 'crop': 'limit', 'quality': 'auto', 'fetch_format': 'webp'}
+            ], default='static/student-example3.jpg')
+    else:
+        option_b_image = models.ImageField(upload_to='answer_images/', blank=True, null=True)
 
     option_c_text = models.CharField(max_length=255, blank=True, null=True)
-    option_c_image = models.ImageField(upload_to='answer_images/', blank=True, null=True)
+    if settings.USE_CLOUDINARY:
+        option_c_image = CloudinaryField('answer_images/', transformation=[
+                {'width': 800, 'height': 800, 'crop': 'limit', 'quality': 'auto', 'fetch_format': 'webp'}
+            ], default='static/student-example3.jpg')
+    else:
+        option_c_image = models.ImageField(upload_to='answer_images/', blank=True, null=True)
 
     option_d_text = models.CharField(max_length=255, blank=True, null=True)
-    option_d_image = models.ImageField(upload_to='answer_images/', blank=True, null=True)
+    if settings.USE_CLOUDINARY:
+        option_d_image = CloudinaryField('answer_images/', transformation=[
+                {'width': 800, 'height': 800, 'crop': 'limit', 'quality': 'auto', 'fetch_format': 'webp'}
+            ], default='static/student-example3.jpg')
+    else:
+        option_d_image = models.ImageField(upload_to='answer_images/', blank=True, null=True)
 
     correct_answer = models.CharField(
         max_length=1,

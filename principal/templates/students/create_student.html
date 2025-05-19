@@ -1,197 +1,301 @@
 {% extends "principal/base.html" %}
+{% load static %}
+
+{% block title %}{% if student %}Update{% else %}Register{% endif %} Student{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8 max-w-4xl">
+<div class="container mx-auto px-4 py-8 max-w-6xl">
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-        <!-- Form Header -->
+        <!-- Header -->
         <div class="bg-blue-600 dark:bg-blue-800 px-6 py-4">
-            <h1 class="text-2xl font-bold text-white">Register New Student</h1>
-            <p class="text-blue-100 dark:text-blue-200">Complete all required fields to register a new student</p>
+            <h1 class="text-2xl font-bold text-white">{% if student %}Update{% else %}Register{% endif %} Student</h1>
+            <p class="text-blue-100 dark:text-blue-200">{% if student %}Update{% else %}Fill in{% endif %} the student details below</p>
         </div>
 
-        <!-- Messages/Alerts -->
-        {% if messages %}
-        <div class="px-6 pt-4 space-y-2">
-            {% for message in messages %}
-            <div class="p-3 rounded-lg {% if message.tags == 'error' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% else %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200{% endif %}">
-                {{ message }}
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        <!-- Student Form -->
-        <form method="post" enctype="multipart/form-data" class="p-6 space-y-6">
+        <!-- Form -->
+        <form method="POST" enctype="multipart/form-data" class="p-6 space-y-6">
             {% csrf_token %}
-
-            <!-- Student Information Section -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- First Name -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name *</label>
-                    <input type="text" name="first_name" required
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                        placeholder="Student's first name">
-                </div>
-
-                <!-- Last Name -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name *</label>
-                    <input type="text" name="last_name" required
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                        placeholder="Student's last name">
-                </div>
-
-                <!-- Email -->
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address *</label>
-                    <input type="email" name="email" required
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                        placeholder="student@example.com">
-                </div>
-
-                <!-- Phone Number -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
-                    <input type="tel" name="phone_number"
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                        placeholder="+1234567890">
-                </div>
-
-                <!-- Class Selection -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Class *</label>
-                    <select name="student_class" required
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
-                        {% for class in form.fields.student_class.queryset %}
-                        <option value="{{ class.id }}">{{ class.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Photo Upload -->
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Student Photo</label>
-                    <div class="mt-1 flex items-center">
-                        <span class="inline-block h-16 w-16 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-600 mr-4 border-2 border-gray-300 dark:border-gray-500">
-                            <svg class="h-full w-full text-gray-300 dark:text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                        </span>
-                        <div>
-                            <label class="cursor-pointer">
-                                <span class="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 inline-flex items-center">
-                                    <i class="fas fa-upload mr-2"></i> Upload Photo
-                                </span>
-                                <input name="photo" type="file" class="sr-only" onchange="previewPhoto(this)">
+            
+            <!-- Student Basic Information -->
+            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 border-b pb-2">Student Information</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- First Name -->
+                    <div>
+                        <label for="first_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name *</label>
+                        <input type="text" id="first_name" name="first_name" value="{{ student.user.first_name|default:'' }}" required 
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                    </div>
+                    
+                    <!-- Last Name -->
+                    <div>
+                        <label for="last_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name *</label>
+                        <input type="text" id="last_name" name="last_name" value="{{ student.user.last_name|default:'' }}" required
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                    </div>
+                    
+                    <!-- Email -->
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email *</label>
+                        <input type="email" id="email" name="email" value="{{ student.user.email|default:'' }}" required
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                    </div>
+                    
+                    <!-- Phone -->
+                    <div>
+                        <label for="phone_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
+                        <input type="tel" id="phone_number" name="phone_number" value="{{ student.phone_number|default:'' }}"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                    </div>
+                    
+                    <!-- Class -->
+                    <div>
+                        <label for="class_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Class *</label>
+                        <select id="class_id" name="class_id" required
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                            <option value="">Select Class</option>
+                            {% for class in classes %}
+                            <option value="{{ class.id }}" {% if student.student_class.id == class.id %}selected{% endif %}>{{ class.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Photo -->
+                    <div>
+                        <label for="photo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Student Photo</label>
+                        <div class="flex items-center">
+                            <input type="file" id="photo" name="photo" accept="image/*"
+                                class="hidden" onchange="previewImage(this)">
+                            <label for="photo" class="cursor-pointer px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                                <i class="fas fa-camera mr-2"></i>Choose File
                             </label>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">JPG, PNG or GIF (Max 2MB)</p>
+                            <span id="file-name" class="ml-3 text-sm text-gray-500 dark:text-gray-400">
+                                {% if student.photo %}Current: {{ student.photo.name|slice:"20:" }}{% else %}No file chosen{% endif %}
+                            </span>
+                        </div>
+                        <div id="image-preview" class="mt-2 {% if not student.photo %}hidden{% endif %}">
+                            <img id="preview" src="{% if student.photo %}{{ student.photo.url }}{% endif %}" class="h-32 rounded-md border border-gray-200 dark:border-gray-600">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Guardians Section -->
-            <div class="pt-6 border-t border-gray-200 dark:border-gray-700">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold text-gray-800 dark:text-white">Guardian Information</h2>
-                    <button type="button" onclick="addGuardian()" class="text-sm px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors flex items-center">
-                        <i class="fas fa-plus mr-1"></i> Add Guardian
-                    </button>
-                </div>
-
-                <div id="guardians" class="space-y-6">
-                    <!-- First Guardian -->
-                    <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+            <!-- Parents/Guardians Section -->
+            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 border-b pb-2">Parents/Guardians</h2>
+                
+                <div id="guardians-container">
+                    {% if student and student.parents.all %}
+                        {% for parent in student.parents.all %}
+                        <div class="guardian-entry mb-4 p-4 border border-gray-200 dark:border-gray-600 rounded-lg relative">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <!-- Guardian Name -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+                                    <input type="text" name="guardian_name[]" value="{{ parent.user.get_full_name }}"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                                </div>
+                                
+                                <!-- Guardian Email -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                                    <input type="email" name="guardian_email[]" value="{{ parent.user.email }}"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                                </div>
+                                
+                                <!-- Guardian Phone -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+                                    <input type="tel" name="guardian_phone[]" value="{{ parent.phone_number }}"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                                </div>
+                            </div>
+                            <button type="button" onclick="removeGuardianField(this)" class="absolute top-2 right-2 text-red-500 hover:text-red-700">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <!-- Default guardian field -->
+                    <div class="guardian-entry mb-4 p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Guardian Name -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
-                                <input type="text" name="guardian_name" required
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white"
-                                    placeholder="Full name">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+                                <input type="text" name="guardian_name[]"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
                             </div>
+                            
+                            <!-- Guardian Email -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email *</label>
-                                <input type="email" name="guardian_email" required
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white"
-                                    placeholder="email@example.com">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                                <input type="email" name="guardian_email[]"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
                             </div>
+                            
+                            <!-- Guardian Phone -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone *</label>
-                                <input type="tel" name="guardian_phone" required
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white"
-                                    placeholder="+1234567890">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+                                <input type="tel" name="guardian_phone[]"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
                             </div>
                         </div>
                     </div>
+                    {% endif %}
                 </div>
+                
+                <button type="button" onclick="addGuardianField()" class="mt-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-900 dark:text-blue-100 dark:hover:bg-blue-800">
+                    <i class="fas fa-plus mr-2"></i> Add Another Guardian
+                </button>
+            </div>
 
-                <!-- Guardian Template (Hidden) -->
-                <div id="guardian-template" class="hidden bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600 mt-4 relative">
-                    <button type="button" onclick="removeGuardian(this)" class="absolute top-2 right-2 text-gray-400 hover:text-red-500">
-                        <i class="fas fa-times"></i>
-                    </button>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
-                            <input type="text" name="guardian_name"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white"
-                                placeholder="Full name">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
-                            <input type="email" name="guardian_email"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white"
-                                placeholder="email@example.com">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
-                            <input type="tel" name="guardian_phone"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:text-white"
-                                placeholder="+1234567890">
-                        </div>
+            <!-- Discount Section -->
+            <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 border-b pb-2">Fee Discount (Optional)</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <!-- Discount Type -->
+                    <div>
+                        <label for="discount_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Discount Type</label>
+                        <select id="discount_type" name="discount_type"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                            <option value="">Select Type</option>
+                            {% for type, display in discount_types %}
+                            <option value="{{ type }}" {% if student.discounts.first and student.discounts.first.discount_type == type %}selected{% endif %}>{{ display }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Discount Value -->
+                    <div>
+                        <label for="discount_value" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Value</label>
+                        <input type="number" id="discount_value" name="discount_value" min="0" step="0.01" 
+                            value="{% if student.discounts.first %}{{ student.discounts.first.discount_value }}{% endif %}"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                    </div>
+                    
+                    <!-- Academic Year -->
+                    <div>
+                        <label for="academic_year" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Academic Year</label>
+                        <input type="text" id="academic_year" name="academic_year"
+                            value="{% if student.discounts.first %}{{ student.discounts.first.academic_year }}{% else %}{{ current_year }}/{{ current_year|add:1 }}{% endif %}"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                    </div>
+                    
+                    <!-- Reason -->
+                    <div>
+                        <label for="discount_reason" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reason</label>
+                        <input type="text" id="discount_reason" name="discount_reason"
+                            value="{% if student.discounts.first %}{{ student.discounts.first.reason }}{% endif %}"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
                     </div>
                 </div>
             </div>
 
             <!-- Form Actions -->
-            <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button type="reset" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    Clear Form
-                </button>
-                <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 flex items-center">
-                    <i class="fas fa-save mr-2"></i> Register Student
+            <div class="flex justify-end space-x-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                <a href="{% url 'principal:student_list' %}" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200">
+                    Cancel
+                </a>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                    {% if student %}Update{% else %}Register{% endif %} Student
                 </button>
             </div>
         </form>
     </div>
 </div>
 
+<!-- JavaScript for dynamic form elements -->
 <script>
-    // Preview uploaded photo
-    function previewPhoto(input) {
-        if (input.files && input.files[0]) {
+    // Image preview functionality
+    function previewImage(input) {
+        const file = input.files[0];
+        const preview = document.getElementById('preview');
+        const fileName = document.getElementById('file-name');
+        const imagePreview = document.getElementById('image-preview');
+        
+        if (file) {
+            fileName.textContent = file.name;
+            
             const reader = new FileReader();
             reader.onload = function(e) {
-                const preview = document.querySelector('.inline-block.h-16.w-16.rounded-full');
-                preview.innerHTML = `<img src="${e.target.result}" class="h-full w-full object-cover">`;
-            };
-            reader.readAsDataURL(input.files[0]);
+                preview.src = e.target.result;
+                imagePreview.classList.remove('hidden');
+            }
+            reader.readAsDataURL(file);
+        } else {
+            fileName.textContent = 'No file chosen';
+            imagePreview.classList.add('hidden');
         }
     }
 
-    // Add new guardian fields
-    function addGuardian() {
-        const guardianTemplate = document.getElementById('guardian-template');
-        const newGuardian = guardianTemplate.cloneNode(true);
-        newGuardian.classList.remove('hidden');
-        newGuardian.removeAttribute('id');
-        document.getElementById('guardians').appendChild(newGuardian);
+    // Add guardian fields dynamically
+    function addGuardianField() {
+        const container = document.getElementById('guardians-container');
+        const newEntry = document.createElement('div');
+        newEntry.className = 'guardian-entry mb-4 p-4 border border-gray-200 dark:border-gray-600 rounded-lg relative';
+        
+        newEntry.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Guardian Name -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+                    <input type="text" name="guardian_name[]"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                </div>
+                
+                <!-- Guardian Email -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                    <input type="email" name="guardian_email[]"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                </div>
+                
+                <!-- Guardian Phone -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+                    <input type="tel" name="guardian_phone[]"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white">
+                </div>
+            </div>
+            <button type="button" onclick="removeGuardianField(this)" class="absolute top-2 right-2 text-red-500 hover:text-red-700">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        container.appendChild(newEntry);
     }
 
-    // Remove guardian fields
-    function removeGuardian(button) {
-        button.closest('.bg-gray-50').remove();
+    // Remove guardian field
+    function removeGuardianField(button) {
+        const entry = button.closest('.guardian-entry');
+        if (document.querySelectorAll('.guardian-entry').length > 1) {
+            entry.remove();
+        } else {
+            // Clear inputs if it's the first (and only) entry
+            const inputs = entry.querySelectorAll('input');
+            inputs.forEach(input => input.value = '');
+        }
     }
+
+    // Set current academic year as default if not already set
+    document.addEventListener('DOMContentLoaded', function() {
+        const academicYearInput = document.getElementById('academic_year');
+        if (academicYearInput && !academicYearInput.value) {
+            const currentYear = new Date().getFullYear();
+            academicYearInput.value = `${currentYear}/${currentYear + 1}`;
+        }
+    });
 </script>
-{% endblock content %}
+
+<style>
+    .guardian-entry {
+        transition: all 0.3s ease;
+    }
+    
+    #image-preview {
+        transition: opacity 0.3s ease;
+    }
+</style>
+{% endblock %}

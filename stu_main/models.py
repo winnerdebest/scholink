@@ -1,6 +1,12 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from academic_main.models import School
+import uuid
+from datetime import date
+
+
+from django.conf import settings
+from cloudinary.models import CloudinaryField
 
 
 class CustomUser(AbstractUser):
@@ -9,6 +15,7 @@ class CustomUser(AbstractUser):
         ('principal', 'Principal'),
         ('teacher', 'Teacher'),
         ('student', 'Student'),
+        ('parent', 'Parent'),
     )
     user_type = models.CharField(max_length=10, choices=USER_TYPES, default='principal')
 
@@ -65,20 +72,29 @@ class ClassSubject(models.Model):
     
 
 
-class Guardian(models.Model):
-    name = models.CharField(max_length=100)
+class Parent(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='parent_profile')
     phone_number = models.CharField(max_length=15)
-    email = models.EmailField(unique=True)
+    address = models.TextField(blank=True, null=True)
+    occupation = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.name} - {self.phone_number}"
+        return f"{self.user.get_full_name()}"
+
 
 
 class Student(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="student_profile")
-    photo = models.ImageField(upload_to="student_photos/", blank=True, null=True)
-    phone_number = models.CharField(max_length=15, unique=True, blank=True, null=True)
-    guardians = models.ManyToManyField(Guardian, related_name="students")
+    registration_number = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    if settings.USE_CLOUDINARY:
+        photo = CloudinaryField('product_images', transformation=[
+                {'width': 800, 'height': 800, 'crop': 'limit', 'quality': 'auto', 'fetch_format': 'webp'}
+            ], default='static/student-example3.jpg')
+    else:
+        photo = models.ImageField(upload_to='student_photos/', blank=True, null=True)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    parents = models.ManyToManyField(Parent, related_name="children", blank=True)
     student_class = models.ForeignKey(
         Class,
         on_delete=models.SET_NULL,
@@ -93,6 +109,13 @@ class Student(models.Model):
     @property
     def school(self):
         return self.student_class.school if self.student_class else None
+    
+    @property
+    def age(self):
+        if self.date_of_birth:
+            today = date.today()
+            return today.year - self.date_of_birth.year - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
+        return None
     
 
 class StudentPost(models.Model):

@@ -41,14 +41,23 @@ class SubjectGradeSummary(models.Model):
         internal_exam_avg = self.get_internal_exam_average()
         internal_assignment_avg = self.get_internal_assignment_average()
 
-        # Exams: external (30%) + internal (30%) = 60%
-        exam_score = ((self.external_exam_score / 100) * 30) + ((internal_exam_avg / 100) * 30)
+        # Get school's grading policy
+        policy = GradingPolicy.objects.get(school=self.class_subject.school_class.school)
+        
+        # Calculate exam score using policy weights
+        exam_internal_weight = (policy.exam_weight * policy.exam_internal_ratio) / 100
+        exam_external_weight = (policy.exam_weight * (100 - policy.exam_internal_ratio)) / 100
+        exam_score = ((internal_exam_avg / 100) * exam_internal_weight) + \
+                    ((self.external_exam_score / 100) * exam_external_weight)
 
-        # Assignments: external + internal combined, then scaled to 20%
-        assignment_score = ((self.external_assignment_score + internal_assignment_avg) / 100) * 20
+        # Calculate assignment score using policy weights
+        assignment_internal_weight = (policy.assignment_weight * policy.assignment_internal_ratio) / 100
+        assignment_external_weight = (policy.assignment_weight * (100 - policy.assignment_internal_ratio)) / 100
+        assignment_score = ((internal_assignment_avg / 100) * assignment_internal_weight) + \
+                         ((self.external_assignment_score / 100) * assignment_external_weight)
 
-        # Tests: external only (20%)
-        test_score = (self.external_test_score / 100) * 20
+        # Calculate test score (external only)
+        test_score = (self.external_test_score / 100) * policy.test_weight
 
         total = exam_score + assignment_score + test_score
         return round(total, 2)
@@ -72,3 +81,42 @@ class ClassGradeSummary(models.Model):
 
     def __str__(self):
         return f"{self.student.get_full_name()} - {self.term} - Rank {self.rank}"
+
+
+class GradingPolicy(models.Model):
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='grading_policy')
+    
+    # Exam weights (60% total)
+    exam_weight = models.FloatField(default=60)
+    exam_internal_ratio = models.FloatField(default=50)  # percentage split for internal
+    
+    # Assignment weights (20% total)
+    assignment_weight = models.FloatField(default=20)
+    assignment_internal_ratio = models.FloatField(default=50)  # percentage split for internal
+    
+    # Test weight (20%)
+    test_weight = models.FloatField(default=20)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name_plural = "Grading Policies"
+    
+    def clean(self):
+        # Validate total weights equal 100%
+        total = self.exam_weight + self.assignment_weight + self.test_weight
+        if total != 100:
+            raise ValidationError("Total weights must equal 100%")
+            
+        # Validate ratios between 0-100
+        for ratio in [self.exam_internal_ratio, self.assignment_internal_ratio]:
+            if not 0 <= ratio <= 100:
+                raise ValidationError("Internal/External ratios must be between 0 and 100")
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.school.name} Grading Policy"

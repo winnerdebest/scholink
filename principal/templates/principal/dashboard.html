@@ -24,11 +24,14 @@
                     </div>
                 </a>
 
-                <a href="#" class="block">
+                <a href="{% url 'principal:revenue_dashboard' %}" class="block">
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center hover:shadow-lg transition-shadow duration-300">
                         <h3 class="text-gray-500 dark:text-gray-300 text-sm font-medium">Total Revenue</h3>
-                        <p class="text-3xl font-bold text-gray-800 dark:text-white my-2">{{ total_revenue|default:"KES 0" }}</p>
-                        <p class="text-green-500 text-xs">+12% from last month</p>
+                        <p class="text-3xl font-bold text-gray-800 dark:text-white my-2">₦{{ total_revenue|floatformat:2|intcomma }}</p>
+                        <div class="flex justify-between text-xs px-2">
+                            <span class="text-gray-500">School Fees: ₦{{ total_school_fees|floatformat:2|intcomma }}</span>
+                            <span class="text-gray-500">Other: ₦{{ total_other_revenue|floatformat:2|intcomma }}</span>
+                        </div>
                     </div>
                 </a>
 
@@ -46,6 +49,7 @@
                     </div>
                 </a>
             </div>
+
 
             <!-- Quick Actions -->
             <div class="mb-8">

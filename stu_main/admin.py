@@ -42,10 +42,10 @@ class ClassSubjectAdmin(admin.ModelAdmin):
     autocomplete_fields = ['subject', 'school_class', 'teacher']
 
 
-@admin.register(Guardian)
+@admin.register(Parent)
 class GuardianAdmin(admin.ModelAdmin):
-    list_display = ('name', 'phone_number', 'email')
-    search_fields = ('name', 'phone_number', 'email')
+    list_display = ('user', 'phone_number', )
+    search_fields = ('user', 'phone_number',)
 
 
 class StudentInline(admin.TabularInline):
@@ -59,7 +59,7 @@ class StudentAdmin(admin.ModelAdmin):
     list_display = ('user', 'student_class', 'phone_number')
     list_filter = ('student_class__school',)
     search_fields = ('user__username', 'user__first_name', 'user__last_name', 'phone_number')
-    autocomplete_fields = ['user', 'student_class', 'guardians']
+    autocomplete_fields = ['user', 'student_class', ]
     inlines = []
 
 

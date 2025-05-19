@@ -16,6 +16,7 @@
     </div>
     
     <form id="weightForm" class="space-y-4">
+        {% csrf_token %}
         <div>
             <label for="internalExam" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Internal Exams Weight (%)</label>
             <input type="number" id="internalExam" min="0" max="100" required
@@ -134,14 +135,36 @@ document.addEventListener('DOMContentLoaded', function() {
         if (total !== 100) {
             return;
         }
-        
-        // Show success message
-        successMessage.classList.remove('hidden');
-        
-        // Hide message after 3 seconds
-        setTimeout(() => {
-            successMessage.classList.add('hidden');
-        }, 3000);
+
+        // Create form data
+        const formData = new FormData();
+        formData.append('internalExam', document.getElementById('internalExam').value);
+        formData.append('externalExam', document.getElementById('externalExam').value);
+        formData.append('internalAssignment', document.getElementById('internalAssignment').value);
+        formData.append('externalAssignment', document.getElementById('externalAssignment').value);
+        formData.append('testWeight', document.getElementById('testWeight').value);
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+        // Submit form
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(response => response.ok ? response.json() : Promise.reject('Network response was not ok'))
+        .then(data => {
+            successMessage.classList.remove('hidden');
+            setTimeout(() => {
+                successMessage.classList.add('hidden');
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                }
+            }, 3000);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('There was an error saving the weights. Please try again.');
+        });
     });
     
     // Initialize

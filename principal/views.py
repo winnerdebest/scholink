@@ -8,10 +8,10 @@ from .forms import *
 from .utils import generate_username, generate_readable_password
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q, Prefetch, Sum
-from .models import Expense, ExpenseCategory, TeacherSalaryPayment, Announcement
+from django.db.models import Q, Prefetch, Sum, Count
+from .models import *
 from django.utils import timezone
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.core.paginator import Paginator
 from django.db import models
 from io import BytesIO
@@ -21,6 +21,18 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib.units import inch
+import uuid
+from academic_main.models import ActiveTerm
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.conf import settings
+from django.db.models.functions import TruncMonth
+import json
+from .models import FeePayment, AdditionalFee, Term
+from django.views.decorators.http import require_http_methods
+from django.core.exceptions import PermissionDenied
+from django.core.exceptions import ValidationError
+from teacher_logic.models import GradingPolicy
 
 
 User = get_user_model()
@@ -89,6 +101,9 @@ def principal_dashboard(request):
         current_month_expenses = 0.0
         expense_change_percentage = 0.0
 
+    # Add revenue calculations
+    
+
     context = {
         "total_students": total_students,
         "total_teachers": total_teachers,
@@ -103,148 +118,242 @@ def principal_dashboard(request):
     return render(request, 'principal/dashboard.html', context)
 
 
-
-import logging
-
-logger = logging.getLogger(__name__)
-
-
 @login_required
 @role_required('principal')
-def create_student(request):
-    school = request.user.school
+def create_or_update_student(request, student_id=None):
+    student = None
+    if student_id:
+        student = get_object_or_404(Student, id=student_id, student_class__school=request.user.school)
+        user = student.user
 
     if request.method == "POST":
-        form = StudentCreationForm(request.POST, request.FILES)
-        if form.is_valid():
-            logger.debug("Form is valid. Cleaned data: %s", form.cleaned_data)
+        first_name = request.POST.get('first_name')
+        last_name = request.POST.get('last_name')
+        email = request.POST.get('email')
+        phone_number = request.POST.get('phone_number')
+        class_id = request.POST.get('class_id')
+        photo = request.FILES.get('photo')
 
-            first_name = form.cleaned_data['first_name']
-            last_name = form.cleaned_data['last_name']
-            email = form.cleaned_data['email']
-
-            username = generate_username(first_name, last_name)
-            password = generate_readable_password()
-
-            user = User.objects.create_user(
-                username=username,
-                email=email,
-                first_name=first_name,
-                last_name=last_name,
-                password=password,
-                user_type="student"
-            )
-
-            student = form.save(commit=False)
-            student.user = user
-
-            # Ensure class belongs to the school
-            if student.student_class and student.student_class.school != school:
-                messages.error(request, "Selected class does not belong to your school.")
-                user.delete()
-                return render(request, "students/create_student.html", {"form": form})
-
-            student.save()
-
-            # Create guardians
-            guardian_names = request.POST.getlist('guardian_name')
-            guardian_emails = request.POST.getlist('guardian_email')
-            guardian_phones = request.POST.getlist('guardian_phone')
-
-            guardians = []
-            for name, email, phone in zip(guardian_names, guardian_emails, guardian_phones):
-                if name and email and phone:
-                    guardian, _ = Guardian.objects.get_or_create(
-                        email=email,
-                        defaults={"name": name, "phone_number": phone}
-                    )
-                    student.guardians.add(guardian)
-                    guardians.append(guardian)
-                else:
-                    logger.warning("Incomplete guardian: %s %s %s", name, email, phone)
-
-            context = {
+        if not all([first_name, last_name, email, class_id]):
+            messages.error(request, "Please fill in all required fields.")
+            return render(request, "students/create_student.html", {
                 "student": student,
-                "username": username,
-                "password": password,
-                "guardians": guardians
-            }
+                "classes": Class.objects.filter(school=request.user.school),
+                "terms": Term.objects.filter(school=request.user.school),
+                "discount_types": StudentDiscount.DISCOUNT_TYPE_CHOICES,
+            })
 
-            return render(request, "students/student_success.html", context)
-        else:
-            logger.error("Form invalid: %s", form.errors)
-            messages.error(request, "Please correct the errors below.")
-    else:
-        form = StudentCreationForm()
-        # Limit class choices to the principal's school
-        form.fields['student_class'].queryset = Class.objects.filter(school=school)
+        student_class = get_object_or_404(Class, id=class_id, school=request.user.school)
 
-    return render(request, "students/create_student.html", {"form": form})
+        try:
+            if student:  # Update existing student
+                # Update user fields
+                user.first_name = first_name
+                user.last_name = last_name
+                user.email = email
+                user.save()
 
-@login_required
-@role_required('principal')
-def edit_student(request, pk):
-    student = get_object_or_404(Student, pk=pk)
-    user = student.user
+                # Update student profile
+                student.phone_number = phone_number
+                student.student_class = student_class
+                if photo:
+                    student.photo = photo
+                student.save()
 
-    if request.method == "POST":
-        form = StudentCreationForm(request.POST, request.FILES, instance=student)
+                messages.success(request, "Student updated successfully!")
+                return redirect("principal:student_list")  # Change to your detail URL
 
-        if form.is_valid():
-            form.save()
+            else:  # Create new student
+                username = generate_username(first_name, last_name)
+                password = generate_readable_password()
 
-            user.first_name = form.cleaned_data['first_name']
-            user.last_name = form.cleaned_data['last_name']
-            user.email = form.cleaned_data['email']
-            user.save()
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    first_name=first_name,
+                    last_name=last_name,
+                    password=password,
+                    user_type="student"
+                )
 
-            
-            guardian_names = request.POST.getlist('guardian_name')
-            guardian_emails = request.POST.getlist('guardian_email')
-            guardian_phones = request.POST.getlist('guardian_phone')
+                student = Student.objects.create(
+                    user=user,
+                    phone_number=phone_number,
+                    student_class=student_class,
+                    photo=photo if photo else None,
+                )
 
-            student.guardians.clear()
-            for name, email, phone in zip(guardian_names, guardian_emails, guardian_phones):
-                if name and email and phone:
-                    guardian, _ = Guardian.objects.get_or_create(
-                        email=email,
-                        defaults={"name": name, "phone_number": phone}
+                # Handle parents
+                parent_names = request.POST.getlist('guardian_name[]')
+                parent_emails = request.POST.getlist('guardian_email[]')
+                parent_phones = request.POST.getlist('guardian_phone[]')
+
+                for name, email, phone in zip(parent_names, parent_emails, parent_phones):
+                    if name and email and phone:
+                        parent_first = name.split()[0]
+                        parent_last = name.split()[-1] if len(name.split()) > 1 else ""
+
+                        parent_username = generate_username(parent_first, parent_last)
+                        parent_password = generate_readable_password()
+
+                        parent_user = User.objects.create_user(
+                            username=parent_username,
+                            email=email,
+                            first_name=parent_first,
+                            last_name=parent_last,
+                            password=parent_password,
+                            user_type="parent"
+                        )
+
+                        parent = Parent.objects.create(
+                            user=parent_user,
+                            phone_number=phone
+                        )
+
+                        student.parents.add(parent)
+
+                        # Send email to parent
+                        context = {
+                            'guardian_name': name,
+                            'student_name': f"{first_name} {last_name}",
+                            'username': parent_username,
+                            'password': parent_password,
+                            'school_name': request.user.school.name
+                        }
+
+                        html_message = render_to_string('emails/guardian_credentials.html', context)
+                        plain_message = f"""
+                            Dear {name},
+
+                            Welcome to {request.user.school.name}! Your account has been created as a parent for {first_name} {last_name}.
+
+                            Your login credentials are:
+                            Username: {parent_username}
+                            Password: {parent_password}
+
+                            Please login at {request.build_absolute_uri('/login/')} to access your account.
+
+                            Best regards,
+                            {request.user.school.name} Administration
+                                                    """
+
+                        send_mail(
+                            subject=f'Welcome to {request.user.school.name} - Parent Account Created',
+                            message=plain_message,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[email],
+                            html_message=html_message
+                        )
+
+                # Handle discount
+                discount_type = request.POST.get('discount_type')
+                discount_value = request.POST.get('discount_value')
+                academic_year = request.POST.get('academic_year')
+                discount_reason = request.POST.get('discount_reason')
+
+                if discount_type and discount_value and academic_year:
+                    StudentDiscount.objects.create(
+                        student=student,
+                        term=ActiveTerm.get_active_term(),
+                        academic_year=academic_year,
+                        school_class=student_class,
+                        discount_type=discount_type,
+                        discount_value=discount_value,
+                        reason=discount_reason,
+                        is_active=True
                     )
-                    student.guardians.add(guardian)
 
-            messages.success(request, "Student updated successfully.")
-            return redirect("principal:student_list", )
-        else:
-            messages.error(request, "Please correct the errors below.")
+                # Email student
+                context = {
+                    'student_name': f"{first_name} {last_name}",
+                    'username': username,
+                    'password': password,
+                    'school_name': request.user.school.name
+                }
 
-    else:
-        # Prepopulate user fields
-        initial_data = {
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "email": user.email,
-        }
-        form = StudentCreationForm(instance=student, initial=initial_data)
+                html_message = render_to_string('emails/student_credentials.html', context)
+                plain_message = f"""
+                    Dear {first_name} {last_name},
 
-    return render(request, "students/edit_student.html", {
-        "form": form,
+                    Welcome to {request.user.school.name}! Your account has been created.
+
+                    Your login credentials are:
+                    Username: {username}
+                    Password: {password}
+
+                    Please login at {request.build_absolute_uri('/login/')} to access your account.
+
+                    Best regards,
+                    {request.user.school.name} Administration
+                                    """
+
+                send_mail(
+                    subject=f'Welcome to {request.user.school.name} - Student Account Created',
+                    message=plain_message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    html_message=html_message
+                )
+
+                context = {
+                    "student": student,
+                    "username": username,
+                    "password": password,
+                }
+
+                messages.success(request, 'Student created successfully!')
+                return render(request, "students/student_success.html", context)
+
+        except Exception as e:
+            messages.error(request, f'Error creating/updating student: {str(e)}')
+            return render(request, "students/create_student.html", {
+                "student": student,
+                "classes": Class.objects.filter(school=request.user.school),
+                "terms": Term.objects.filter(school=request.user.school),
+                "discount_types": StudentDiscount.DISCOUNT_TYPE_CHOICES,
+            })
+
+    # GET request
+    classes = Class.objects.filter(school=request.user.school)
+    terms = Term.objects.filter(school=request.user.school)
+    
+
+    return render(request, "students/create_student.html", {
         "student": student,
+        "classes": classes,
+        "fee_categories": fee_categories,
+        "terms": terms,
+        "discount_types": StudentDiscount.DISCOUNT_TYPE_CHOICES
     })
 
 
 @login_required
 @role_required('principal')
-def delete_student(request, pk):
-    student = get_object_or_404(Student, pk=pk)
-
+def delete_student(request, student_id):
+    student = get_object_or_404(Student, id=student_id, student_class__school=request.user.school)
+    
     if request.method == "POST":
-        user = student.user 
-        student.delete()
-        user.delete()  
-        messages.success(request, "Student deleted successfully.")
-        return redirect("principal:student_list")
-
-    return render(request, "students/delete_student_confirm.html", {"student": student})
+        try:
+            # Get the user before deleting the student
+            user = student.user
+            
+            # Delete the student record
+            student.delete()
+            
+            # Delete the associated user account
+            user.delete()
+            
+            messages.success(request, "Student deleted successfully!")
+            return redirect("principal:student_list")
+            
+        except Exception as e:
+            messages.error(request, f"Error deleting student: {str(e)}")
+            return redirect("principal:student_detail", student_id=student_id)
+    
+    # If GET request, show confirmation page
+    return render(request, "students/delete_student_confirm.html", {
+        "student": student
+    })
 
 
 @login_required
@@ -418,33 +527,65 @@ def class_list(request):
 @login_required
 @role_required('principal')
 def create_class(request):
-    school = request.user.school
-
-    if request.method == "POST":
-        name = request.POST.get("name")
-        form_master_id = request.POST.get("form_master")
-
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        form_master_id = request.POST.get('form_master')
+        
+        # Get fee data from POST
+        fee_categories = request.POST.getlist('fee_category[]')
+        fee_amounts = request.POST.getlist('fee_amount[]')
+        fee_due_dates = request.POST.getlist('fee_due_date[]')
+        
         if not name:
             messages.error(request, "Class name is required.")
-        else:
-            form_master = None
-            if form_master_id:
-                teacher = Teacher.objects.select_related('user').filter(id=form_master_id, school=school).first()
-                if not teacher:
-                    messages.error(request, "Selected form master is invalid.")
-                    return redirect("principal:create_class")
-                form_master = teacher.user  
+            return render(request, "principal/create_class.html")
 
-            class_instance = Class.objects.create(
+        try:
+            # Check if class name already exists in the school
+            if Class.objects.filter(name=name, school=request.user.school).exists():
+                messages.error(request, "A class with this name already exists in your school.")
+                return render(request, "principal/create_class.html")
+
+            # Create the class
+            school_class = Class.objects.create(
                 name=name,
-                form_master=form_master,
-                school=school
+                school=request.user.school,
+                form_master_id=form_master_id if form_master_id else None
             )
-            messages.success(request, f"Class '{class_instance.name}' created successfully.")
-            return redirect("principal:class_list")
-
-    teachers = Teacher.objects.select_related('user').filter(school=school)
-    return render(request, "classes/create_class.html", {"teachers": teachers})
+            
+            # Create class fees
+            active_term = ActiveTerm.get_active_term()
+            for category_id, amount, due_date in zip(fee_categories, fee_amounts, fee_due_dates):
+                if category_id and amount:  # Only create if both category and amount are provided
+                    ClassFee.objects.create(
+                        school_class=school_class,
+                        fee_category_id=category_id,
+                        amount=amount,
+                        due_date=due_date if due_date else None,
+                        term=active_term,
+                        academic_year=active_term.school.academic_year
+                    )
+            
+            messages.success(request, 'Class created successfully!')
+            return redirect('principal:class_list')
+            
+        except Exception as e:
+            messages.error(request, f'Error creating class: {str(e)}')
+            return render(request, "principal/create_class.html")
+    
+    # GET request - show the form
+    teachers = CustomUser.objects.filter(
+        user_type='teacher',
+        teacher__school=request.user.school
+    ).select_related('teacher')
+    
+    # Get fee categories for the school
+    fee_categories = FeeCategory.objects.filter(school=request.user.school)
+    
+    return render(request, 'classes/create_class.html', {
+        'teachers': teachers,
+        'fee_categories': fee_categories
+    })
 
 
 
@@ -453,35 +594,93 @@ def create_class(request):
 @login_required
 @role_required('principal')
 def edit_class(request, class_id):
-    class_instance = get_object_or_404(Class, id=class_id)
-    school = request.user.school
-
-    if request.method == "POST":
-        name = request.POST.get("name")
-        form_master_id = request.POST.get("form_master")
-
+    school_class = get_object_or_404(Class, id=class_id, school=request.user.school)
+    
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        form_master_id = request.POST.get('form_master')
+        
+        # Get fee data from POST
+        fee_categories = request.POST.getlist('fee_category[]')
+        fee_amounts = request.POST.getlist('fee_amount[]')
+        fee_due_dates = request.POST.getlist('fee_due_date[]')
+        existing_fee_ids = request.POST.getlist('existing_fee_id[]')
+        
         if not name:
             messages.error(request, "Class name is required.")
-        else:
-            class_instance.name = name
+            return redirect('principal:edit_class', class_id=class_id)
 
-            if form_master_id:
-                teacher = Teacher.objects.select_related('user').filter(id=form_master_id, school=school).first()
-                if not teacher:
-                    messages.error(request, "Selected form master is invalid.")
-                    return redirect("principal:edit_class", class_id=class_id)
-                class_instance.form_master = teacher.user
-            else:
-                class_instance.form_master = None
+        try:
+            # Check if class name already exists in the school (excluding current class)
+            if Class.objects.filter(name=name, school=request.user.school).exclude(id=class_id).exists():
+                messages.error(request, "A class with this name already exists in your school.")
+                return redirect('principal:edit_class', class_id=class_id)
 
-            class_instance.save()
-            messages.success(request, f"Class '{class_instance.name}' updated successfully.")
-            return redirect("principal:class_list")
-
-    teachers = Teacher.objects.select_related('user').filter(school=school)
-    return render(request, "classes/edit_class.html", {
-        "class_instance": class_instance,
-        "teachers": teachers
+            # Update the class
+            school_class.name = name
+            school_class.form_master_id = form_master_id if form_master_id else None
+            school_class.save()
+            
+            # Handle class fees
+            active_term = ActiveTerm.get_active_term()
+            
+            # Get existing fees for this class
+            existing_fees = {fee.id: fee for fee in ClassFee.objects.filter(school_class=school_class)}
+            
+            # Update or create fees
+            for i in range(len(fee_categories)):
+                if fee_categories[i] and fee_amounts[i]:  # Only process if both category and amount are provided
+                    fee_id = existing_fee_ids[i] if i < len(existing_fee_ids) else None
+                    
+                    if fee_id and int(fee_id) in existing_fees:
+                        # Update existing fee
+                        fee = existing_fees[int(fee_id)]
+                        fee.fee_category_id = fee_categories[i]
+                        fee.amount = fee_amounts[i]
+                        fee.due_date = fee_due_dates[i] if fee_due_dates[i] else None
+                        fee.save()
+                        # Remove from existing_fees dict to track which ones to delete
+                        del existing_fees[int(fee_id)]
+                    else:
+                        # Create new fee
+                        ClassFee.objects.create(
+                            school_class=school_class,
+                            fee_category_id=fee_categories[i],
+                            amount=fee_amounts[i],
+                            due_date=fee_due_dates[i] if fee_due_dates[i] else None,
+                            term=active_term,
+                            academic_year=active_term.school.academic_year
+                        )
+            
+            # Delete any remaining fees that weren't updated
+            for fee in existing_fees.values():
+                fee.delete()
+            
+            messages.success(request, 'Class updated successfully!')
+            return redirect('principal:class_list')
+            
+        except Exception as e:
+            messages.error(request, f'Error updating class: {str(e)}')
+            return redirect('principal:edit_class', class_id=class_id)
+    
+    # GET request - show the form
+    teachers = CustomUser.objects.filter(
+        user_type='teacher',
+        teacher__school=request.user.school
+    ).select_related('teacher')
+    
+    # Get fee categories and existing fees
+    fee_categories = FeeCategory.objects.filter(school=request.user.school)
+    existing_fees = ClassFee.objects.filter(
+        school_class=school_class,
+        term=ActiveTerm.get_active_term()
+    ).select_related('fee_category')
+    
+    return render(request, 'classes/edit_class.html', {
+        'school_class': school_class,
+        'teachers': teachers,
+        'fee_categories': fee_categories,
+        'existing_fees': existing_fees
     })
 
 
@@ -653,8 +852,67 @@ def delete_subject(request, subject_id):
 
 
 
-def grade_customize(request):
-    return render(request, 'principal/customize_grade.html')
+
+
+@login_required
+@role_required('principal')
+def customize_grade_weights(request):
+    try:
+        policy = GradingPolicy.objects.get(school=request.user.principal.school)
+    except GradingPolicy.DoesNotExist:
+        policy = None
+
+    if request.method == 'POST':
+        # Get values from form
+        internal_exam = float(request.POST.get('internalExam', 0))
+        external_exam = float(request.POST.get('externalExam', 0))
+        internal_assignment = float(request.POST.get('internalAssignment', 0))
+        external_assignment = float(request.POST.get('externalAssignment', 0))
+        test_weight = float(request.POST.get('testWeight', 0))
+
+        # Calculate total weights
+        exam_weight = internal_exam + external_exam
+        assignment_weight = internal_assignment + external_assignment
+
+        # Calculate internal ratios
+        exam_internal_ratio = (internal_exam / exam_weight * 100) if exam_weight > 0 else 50
+        assignment_internal_ratio = (internal_assignment / assignment_weight * 100) if assignment_weight > 0 else 50
+
+        try:
+            if policy is None:
+                policy = GradingPolicy(school=request.user.principal.school)
+
+            policy.exam_weight = exam_weight
+            policy.assignment_weight = assignment_weight
+            policy.test_weight = test_weight
+            policy.exam_internal_ratio = exam_internal_ratio
+            policy.assignment_internal_ratio = assignment_internal_ratio
+            policy.save()
+
+            messages.success(request, 'Grading policy updated successfully.')
+            return redirect('principal:customize_grade')
+
+        except ValidationError as e:
+            messages.error(request, str(e))
+            return redirect('principal:customize_grade')
+
+    # For GET request, prepare initial data
+    context = {}
+    if policy:
+        exam_internal = (policy.exam_weight * policy.exam_internal_ratio) / 100
+        exam_external = (policy.exam_weight * (100 - policy.exam_internal_ratio)) / 100
+        assignment_internal = (policy.assignment_weight * policy.assignment_internal_ratio) / 100
+        assignment_external = (policy.assignment_weight * (100 - policy.assignment_internal_ratio)) / 100
+
+        context = {
+            'internal_exam': exam_internal,
+            'external_exam': exam_external,
+            'internal_assignment': assignment_internal,
+            'external_assignment': assignment_external,
+            'test_weight': policy.test_weight
+        }
+
+    return render(request, 'principal/customize_grade.html', context)
 
 
 
@@ -682,10 +940,98 @@ def settings_view(request):
         user_form = UserSettingsForm(instance=user)
         school_form = SchoolSettingsForm(instance=school)
 
-    return render(request, "principal/settings.html", {
+    return render(request, "settings/settings.html", {
         "user_form": user_form,
         "school_form": school_form
     })
+
+
+
+
+# Imports for this view I didnt add it at the top because its like on thousand lines at the top
+import requests
+from django.views import View
+from django.urls import reverse
+from academic_main.utils import create_flutterwave_subaccount, get_flutterwave_banks
+
+#Class based view for creating, updating and deleting Payment Info Creation
+class PaymentInfoCreateUpdateView(View):
+    def get(self, request):
+        school = request.user.school
+        banks = get_flutterwave_banks()
+        payment_info = SchoolPaymentInfo.objects.filter(school=school).first()
+
+        return render(request, "settings/payment_info.html", {
+            "banks": banks,
+            "payment_info": payment_info
+        })
+
+    def post(self, request):
+        school = request.user.school
+        data = request.POST
+
+        payment_info = SchoolPaymentInfo.objects.filter(school=school).first()
+
+        if payment_info:
+            # Update existing record
+            payment_info.account_name = data["account_name"]
+            payment_info.account_number = data["account_number"]
+            payment_info.bank_name = data["bank_name"]
+            payment_info.bank_code = data["bank_code"]
+            payment_info.split_percentage = int(data.get("split_percentage", 98))
+            payment_info.save()
+
+            messages.success(request, "Payment info updated successfully.")
+            return redirect("principal:paymentinfo-create", pk=payment_info.pk)
+
+        else:
+            # Create new record + Flutterwave subaccount
+            try:
+                subaccount = create_flutterwave_subaccount(
+                    account_name=data["account_name"],
+                    account_number=data["account_number"],
+                    bank_code=data["bank_code"],
+                    split_percentage=int(data.get("split_percentage", 98)),
+                    school=school,
+                )
+            except requests.exceptions.HTTPError as e:
+                try:
+                    error_response = e.response.json()
+                    flutterwave_message = error_response.get("message", str(e))
+                except Exception:
+                    flutterwave_message = str(e)
+
+                messages.error(request, f"Flutterwave Error: {flutterwave_message}")
+                return redirect("principal:paymentinfo-create")
+
+
+            payment_info = SchoolPaymentInfo.objects.create(
+                school=school,
+                provider="flutterwave",
+                account_name=data["account_name"],
+                account_number=data["account_number"],
+                bank_name=data["bank_name"],
+                bank_code=data["bank_code"],
+                flutterwave_subaccount_id=subaccount["id"],
+                split_percentage=98,
+                is_active=True,
+            )
+            messages.success(request, "Payment info added successfully.")
+            return redirect("paymentinfo-detail", pk=payment_info.pk)
+
+
+
+
+class PaymentInfoDeleteView(View):
+    def post(self, request, pk):
+        payment_info = get_object_or_404(SchoolPaymentInfo, pk=pk)
+        payment_info.delete()
+        messages.success(request, "Payment info deleted.")
+        return redirect("school-dashboard")
+
+
+
+
 
 
 
@@ -1215,6 +1561,839 @@ def delete_announcement(request, pk):
     return render(request, 'principal/delete_announcement_confirm.html', {
         'announcement': announcement
     })
+
+
+
+
+
+
+
+@login_required
+@role_required('principal')
+def fee_categories(request):
+    school = request.user.school
+    categories = FeeCategory.objects.filter(school=school)
+    
+    if request.method == "POST":
+        name = request.POST.get('name')
+        amount = request.POST.get('amount')
+        description = request.POST.get('description')
+        is_recurring = request.POST.get('is_recurring') == 'on'
+        due_date = request.POST.get('due_date')
+
+        try:
+            FeeCategory.objects.create(
+                school=school,
+                name=name,
+                amount=amount,
+                description=description,
+                is_recurring=is_recurring,
+                due_date=due_date if due_date else None
+            )
+            messages.success(request, "Fee category created successfully.")
+            return redirect('principal:fee_categories')
+        except Exception as e:
+            messages.error(request, f"Error creating fee category: {str(e)}")
+
+    return render(request, 'principal/fee_categories.html', {'categories': categories})
+
+
+
+
+@login_required
+@role_required('principal')
+def class_fees(request):
+    school = request.user.school
+    selected_class = request.GET.get('class')
+    selected_category = request.GET.get('category')
+    selected_term = request.GET.get('term')
+    selected_year = request.GET.get('academic_year')
+
+    # Base queryset
+    class_fees = ClassFee.objects.filter(school_class__school=school).select_related(
+        'school_class', 'fee_category', 'term'
+    )
+
+    # Apply filters
+    if selected_class:
+        class_fees = class_fees.filter(school_class_id=selected_class)
+    if selected_category:
+        class_fees = class_fees.filter(fee_category_id=selected_category)
+    if selected_term:
+        class_fees = class_fees.filter(term_id=selected_term)
+    if selected_year:
+        class_fees = class_fees.filter(academic_year=selected_year)
+
+    if request.method == "POST":
+        school_class_id = request.POST.get('school_class')
+        fee_category_id = request.POST.get('fee_category')
+        amount = request.POST.get('amount')
+        due_date = request.POST.get('due_date')
+        term_id = request.POST.get('term')
+        academic_year = request.POST.get('academic_year')
+
+        try:
+            class_fee = ClassFee.objects.create(
+                school_class_id=school_class_id,
+                fee_category_id=fee_category_id,
+                amount=amount,
+                due_date=due_date,
+                term_id=term_id,
+                academic_year=academic_year
+            )
+            messages.success(request, "Class fee created successfully.")
+            return redirect('principal:class_fees')
+        except Exception as e:
+            messages.error(request, f"Error creating class fee: {str(e)}")
+
+    # Get data for dropdowns
+    classes = Class.objects.filter(school=school)
+    fee_categories = FeeCategory.objects.filter(school=school)
+    terms = Term.objects.filter(school=school)
+    academic_years = class_fees.values_list('academic_year', flat=True).distinct()
+
+    context = {
+        'class_fees': class_fees,
+        'classes': classes,
+        'fee_categories': fee_categories,
+        'terms': terms,
+        'academic_years': academic_years,
+        'selected_class': selected_class,
+        'selected_category': selected_category,
+        'selected_term': selected_term,
+        'selected_year': selected_year,
+    }
+
+    return render(request, 'principal/class_fees.html', context)
+
+@login_required
+@role_required('principal')
+def edit_class_fee(request, fee_id):
+    school = request.user.school
+    class_fee = get_object_or_404(ClassFee, id=fee_id, school_class__school=school)
+
+    if request.method == "POST":
+        try:
+            class_fee.school_class_id = request.POST.get('school_class')
+            class_fee.fee_category_id = request.POST.get('fee_category')
+            class_fee.amount = request.POST.get('amount')
+            class_fee.due_date = request.POST.get('due_date')
+            class_fee.term_id = request.POST.get('term')
+            class_fee.academic_year = request.POST.get('academic_year')
+            class_fee.save()
+            messages.success(request, "Class fee updated successfully.")
+            return redirect('principal:class_fees')
+        except Exception as e:
+            messages.error(request, f"Error updating class fee: {str(e)}")
+
+    return JsonResponse({'id': class_fee.id, 'data': {
+        'school_class': class_fee.school_class_id,
+        'fee_category': class_fee.fee_category_id,
+        'amount': float(class_fee.amount),
+        'due_date': class_fee.due_date.isoformat(),
+        'term': class_fee.term_id,
+        'academic_year': class_fee.academic_year,
+    }})
+
+@login_required
+@role_required('principal')
+def delete_class_fee(request, fee_id):
+    class_fee = get_object_or_404(ClassFee, id=fee_id, school_class__school=request.user.school)
+    
+    if request.method == "POST":
+        class_fee.delete()
+        messages.success(request, "Class fee deleted successfully.")
+    
+    return redirect('principal:class_fees')
+
+@login_required
+@role_required('principal')
+def student_discounts(request):
+    school = request.user.school
+    selected_student = request.GET.get('student')
+    selected_category = request.GET.get('category')
+    selected_term = request.GET.get('term')
+    status = request.GET.get('status')
+
+    # Base queryset
+    discounts = StudentDiscount.objects.filter(
+        student__student_class__school=school
+    ).select_related('student', 'student__user', 'student__student_class', 'fee_category', 'term')
+
+    # Apply filters
+    if selected_student:
+        discounts = discounts.filter(student_id=selected_student)
+    if selected_category:
+        discounts = discounts.filter(fee_category_id=selected_category)
+    if selected_term:
+        discounts = discounts.filter(term_id=selected_term)
+    if status:
+        discounts = discounts.filter(is_active=status == 'active')
+
+    if request.method == "POST":
+        student_id = request.POST.get('student')
+        fee_category_id = request.POST.get('fee_category')
+        discount_type = request.POST.get('discount_type')
+        discount_value = request.POST.get('discount_value')
+        term_id = request.POST.get('term')
+        academic_year = request.POST.get('academic_year')
+        reason = request.POST.get('reason')
+        is_active = request.POST.get('is_active') == 'on'
+
+        try:
+            discount = StudentDiscount.objects.create(
+                student_id=student_id,
+                fee_category_id=fee_category_id,
+                discount_type=discount_type,
+                discount_value=discount_value,
+                term_id=term_id,
+                academic_year=academic_year,
+                reason=reason,
+                is_active=is_active
+            )
+            messages.success(request, "Student discount created successfully.")
+            return redirect('principal:student_discounts')
+        except Exception as e:
+            messages.error(request, f"Error creating student discount: {str(e)}")
+
+    # Get data for dropdowns
+    students = Student.objects.filter(student_class__school=school).select_related('user', 'student_class')
+    fee_categories = FeeCategory.objects.filter(school=school)
+    terms = Term.objects.filter(school=school)
+
+    context = {
+        'discounts': discounts,
+        'students': students,
+        'fee_categories': fee_categories,
+        'terms': terms,
+        'selected_student': selected_student,
+        'selected_category': selected_category,
+        'selected_term': selected_term,
+        'status': status,
+    }
+
+    return render(request, 'principal/student_discounts.html', context)
+
+@login_required
+@role_required('principal')
+def edit_student_discount(request, discount_id):
+    school = request.user.school
+    discount = get_object_or_404(StudentDiscount, id=discount_id, student__student_class__school=school)
+
+    if request.method == "POST":
+        try:
+            discount.student_id = request.POST.get('student')
+            discount.fee_category_id = request.POST.get('fee_category')
+            discount.discount_type = request.POST.get('discount_type')
+            discount.discount_value = request.POST.get('discount_value')
+            discount.term_id = request.POST.get('term')
+            discount.academic_year = request.POST.get('academic_year')
+            discount.reason = request.POST.get('reason')
+            discount.is_active = request.POST.get('is_active') == 'on'
+            discount.save()
+            messages.success(request, "Student discount updated successfully.")
+            return redirect('principal:student_discounts')
+        except Exception as e:
+            messages.error(request, f"Error updating student discount: {str(e)}")
+
+    return JsonResponse({'id': discount.id, 'data': {
+        'student': discount.student_id,
+        'fee_category': discount.fee_category_id,
+        'discount_type': discount.discount_type,
+        'discount_value': float(discount.discount_value),
+        'term': discount.term_id,
+        'academic_year': discount.academic_year,
+        'reason': discount.reason,
+        'is_active': discount.is_active,
+    }})
+
+@login_required
+@role_required('principal')
+def delete_student_discount(request, discount_id):
+    discount = get_object_or_404(StudentDiscount, id=discount_id, student__student_class__school=request.user.school)
+    
+    if request.method == "POST":
+        discount.delete()
+        messages.success(request, "Student discount deleted successfully.")
+    
+    return redirect('principal:student_discounts')
+
+@login_required
+def manage_class_fees(request):
+    # Get the active term
+    active_term = ActiveTerm.get_active_term()
+    
+    # Get all fee categories for the school
+    fee_categories = FeeCategory.objects.filter(school=request.user.school)
+    
+    # Get all classes for the school
+    classes = Class.objects.filter(school=request.user.school)
+    
+    if request.method == 'POST':
+        fee_category_id = request.POST.get('fee_category')
+        class_id = request.POST.get('class')
+        amount = request.POST.get('amount')
+        due_date = request.POST.get('due_date')
+        
+        try:
+            fee_category = FeeCategory.objects.get(id=fee_category_id)
+            school_class = Class.objects.get(id=class_id)
+            
+            # Create or update class fee
+            ClassFee.objects.update_or_create(
+                school_class=school_class,
+                fee_category=fee_category,
+                term=active_term,
+                academic_year=active_term.school.academic_year,
+                defaults={
+                    'amount': amount,
+                    'due_date': due_date
+                }
+            )
+            
+            messages.success(request, 'Fee assigned successfully!')
+        except Exception as e:
+            messages.error(request, f'Error assigning fee: {str(e)}')
+            
+        return redirect('manage_class_fees')
+    
+    # Get existing class fees for the active term
+    class_fees = ClassFee.objects.filter(
+        term=active_term,
+        school_class__school=request.user.school
+    ).select_related('school_class', 'fee_category')
+    
+    context = {
+        'fee_categories': fee_categories,
+        'classes': classes,
+        'class_fees': class_fees,
+        'active_term': active_term
+    }
+    
+    return render(request, 'principal/manage_class_fees.html', context)
+
+@login_required
+def view_class_fees(request, class_id):
+    active_term = ActiveTerm.get_active_term()
+    school_class = get_object_or_404(Class, id=class_id, school=request.user.school)
+    
+    class_fees = ClassFee.objects.filter(
+        school_class=school_class,
+        term=active_term
+    ).select_related('fee_category')
+    
+    # Get total fees for the class
+    total_fees = class_fees.aggregate(total=Sum('amount'))['total'] or 0
+    
+    context = {
+        'school_class': school_class,
+        'class_fees': class_fees,
+        'total_fees': total_fees,
+        'active_term': active_term
+    }
+    
+    return render(request, 'principal/view_class_fees.html', context)
+
+@login_required
+@role_required('principal')
+def revenue_dashboard(request):
+    school = request.user.school
+    current_term = ActiveTerm.get_active_term()
+    
+    # Get date filters
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    term_filter = request.GET.get('term')
+    
+    # Base queryset for all payments
+    payments = FeePayment.objects.filter(school=school)
+    
+    # Apply filters
+    if start_date:
+        payments = payments.filter(payment_date__gte=start_date)
+    if end_date:
+        payments = payments.filter(payment_date__lte=end_date)
+    if term_filter:
+        payments = payments.filter(term_id=term_filter)
+    else:
+        payments = payments.filter(term=current_term)
+    
+    # Calculate totals
+    total_revenue = payments.filter(payment_status='paid').aggregate(
+        total=Sum('amount_paid'))['total'] or 0
+    
+    # Get revenue by fee type
+    class_fee_revenue = payments.filter(
+        payment_type='class_fee',
+        payment_status='paid'
+    ).aggregate(total=Sum('amount_paid'))['total'] or 0
+    
+    additional_fee_revenue = payments.filter(
+        payment_type='additional_fee',
+        payment_status='paid'
+    ).aggregate(total=Sum('amount_paid'))['total'] or 0
+    
+    # Get payment statistics
+    payment_stats = {
+        'total_payments': payments.count(),
+        'paid_payments': payments.filter(payment_status='paid').count(),
+        'partial_payments': payments.filter(payment_status='partial').count(),
+        'unpaid_payments': payments.filter(payment_status='unpaid').count(),
+    }
+    
+    # Get recent payments
+    recent_payments = payments.select_related(
+        'student', 'student__user', 'fee_category', 'additional_fee'
+    ).order_by('-payment_date')[:10]
+    
+    # Get terms for filter
+    terms = Term.objects.filter(school=school)
+    
+    context = {
+        'total_revenue': total_revenue,
+        'class_fee_revenue': class_fee_revenue,
+        'additional_fee_revenue': additional_fee_revenue,
+        'payment_stats': payment_stats,
+        'recent_payments': recent_payments,
+        'terms': terms,
+        'current_term': current_term,
+        'start_date': start_date,
+        'end_date': end_date,
+        'term_filter': term_filter,
+    }
+    
+    return render(request, 'principal/revenue_dashboard.html', context)
+
+@login_required
+@role_required('principal')
+def record_fee_payment(request):
+    school = request.user.school
+    
+    if request.method == 'POST':
+        student_id = request.POST.get('student')
+        payment_type = request.POST.get('payment_type')
+        fee_category_id = request.POST.get('fee_category')
+        additional_fee_id = request.POST.get('additional_fee')
+        amount = request.POST.get('amount')
+        amount_paid = request.POST.get('amount_paid')
+        payment_method = request.POST.get('payment_method')
+        payment_date = request.POST.get('payment_date')
+        term_id = request.POST.get('term')
+        academic_year = request.POST.get('academic_year')
+        notes = request.POST.get('notes')
+        
+        try:
+            student = Student.objects.get(id=student_id, student_class__school=school)
+            
+            # Create payment record
+            payment = FeePayment.objects.create(
+                student=student,
+                school=school,
+                payment_type=payment_type,
+                fee_category_id=fee_category_id if payment_type == 'class_fee' else None,
+                additional_fee_id=additional_fee_id if payment_type == 'additional_fee' else None,
+                amount=amount,
+                amount_paid=amount_paid,
+                payment_method=payment_method,
+                payment_date=payment_date,
+                term_id=term_id,
+                academic_year=academic_year,
+                notes=notes
+            )
+            
+            messages.success(request, f"Payment of ₦{amount_paid} recorded successfully. Receipt #: {payment.receipt_number}")
+            return redirect('principal:revenue_dashboard')
+            
+        except Exception as e:
+            messages.error(request, f"Error recording payment: {str(e)}")
+    
+    # GET request - show the form
+    students = Student.objects.filter(student_class__school=school).select_related('user', 'student_class')
+    fee_categories = FeeCategory.objects.filter(school=school)
+    additional_fees = AdditionalFee.objects.filter(applicable_classes__school=school).distinct()
+    terms = Term.objects.filter(school=school)
+    
+    context = {
+        'students': students,
+        'fee_categories': fee_categories,
+        'additional_fees': additional_fees,
+        'terms': terms,
+        'payment_methods': FeePayment.PAYMENT_METHOD,
+    }
+    
+    return render(request, 'principal/record_fee_payment.html', context)
+
+@login_required
+@role_required('principal')
+def manage_additional_fees(request):
+    school = request.user.school
+    
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        amount = request.POST.get('amount')
+        description = request.POST.get('description')
+        is_general = request.POST.get('is_general') == 'on'
+        applicable_classes = request.POST.getlist('applicable_classes')
+        
+        try:
+            fee = AdditionalFee.objects.create(
+                name=name,
+                amount=amount,
+                description=description,
+                is_general=is_general
+            )
+            
+            if not is_general and applicable_classes:
+                fee.applicable_classes.set(applicable_classes)
+            
+            messages.success(request, "Additional fee created successfully.")
+            return redirect('principal:manage_additional_fees')
+            
+        except Exception as e:
+            messages.error(request, f"Error creating additional fee: {str(e)}")
+    
+    # GET request - show the form and list
+    additional_fees = AdditionalFee.objects.filter(
+        applicable_classes__school=school
+    ).distinct().prefetch_related('applicable_classes')
+    
+    classes = Class.objects.filter(school=school)
+    
+    context = {
+        'additional_fees': additional_fees,
+        'classes': classes,
+    }
+    
+    return render(request, 'principal/manage_additional_fees.html', context)
+
+@login_required
+@role_required('principal')
+def edit_additional_fee(request, fee_id):
+    school = request.user.school
+    fee = get_object_or_404(AdditionalFee, id=fee_id, applicable_classes__school=school)
+    
+    if request.method == 'POST':
+        fee.name = request.POST.get('name')
+        fee.amount = request.POST.get('amount')
+        fee.description = request.POST.get('description')
+        fee.is_general = request.POST.get('is_general') == 'on'
+        
+        try:
+            fee.save()
+            
+            if not fee.is_general:
+                fee.applicable_classes.set(request.POST.getlist('applicable_classes'))
+            else:
+                fee.applicable_classes.clear()
+            
+            messages.success(request, "Additional fee updated successfully.")
+            return redirect('principal:manage_additional_fees')
+            
+        except Exception as e:
+            messages.error(request, f"Error updating additional fee: {str(e)}")
+    
+    return JsonResponse({
+        'id': fee.id,
+        'name': fee.name,
+        'amount': float(fee.amount),
+        'description': fee.description,
+        'is_general': fee.is_general,
+        'applicable_classes': list(fee.applicable_classes.values_list('id', flat=True))
+    })
+
+@login_required
+@role_required('principal')
+def delete_additional_fee(request, fee_id):
+    fee = get_object_or_404(AdditionalFee, id=fee_id, applicable_classes__school=request.user.school)
+    
+    if request.method == 'POST':
+        fee.delete()
+        messages.success(request, "Additional fee deleted successfully.")
+    
+    return redirect('principal:manage_additional_fees')
+
+@login_required
+@role_required('principal')
+def payment_details(request, payment_id):
+    payment = get_object_or_404(FeePayment, id=payment_id, school=request.user.school)
+    return render(request, 'principal/payment_details.html', {'payment': payment})
+
+@login_required
+@role_required('principal')
+def export_revenue_report(request):
+    school = request.user.school
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    term_filter = request.GET.get('term')
+    
+    # Base queryset
+    payments = FeePayment.objects.filter(school=school)
+    
+    # Apply filters
+    if start_date:
+        payments = payments.filter(payment_date__gte=start_date)
+    if end_date:
+        payments = payments.filter(payment_date__lte=end_date)
+    if term_filter:
+        payments = payments.filter(term_id=term_filter)
+    
+    # Create Excel file
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output)
+    worksheet = workbook.add_worksheet()
+    
+    # Add headers
+    headers = ['Date', 'Student', 'Fee Type', 'Category', 'Amount', 'Amount Paid', 'Status', 'Method', 'Receipt #']
+    header_format = workbook.add_format({'bold': True, 'bg_color': '#f0f0f0'})
+    
+    for col, header in enumerate(headers):
+        worksheet.write(0, col, header, header_format)
+    
+    # Add payment data
+    for row, payment in enumerate(payments.select_related('student__user', 'fee_category', 'additional_fee'), start=1):
+        worksheet.write(row, 0, payment.payment_date.strftime('%Y-%m-%d'))
+        worksheet.write(row, 1, payment.student.user.get_full_name())
+        worksheet.write(row, 2, payment.get_payment_type_display())
+        worksheet.write(row, 3, payment.fee_category.name if payment.fee_category else payment.additional_fee.name)
+        worksheet.write(row, 4, float(payment.amount))
+        worksheet.write(row, 5, float(payment.amount_paid))
+        worksheet.write(row, 6, payment.get_payment_status_display())
+        worksheet.write(row, 7, payment.get_payment_method_display())
+        worksheet.write(row, 8, payment.receipt_number)
+    
+    # Add totals
+    total_row = len(payments) + 2
+    worksheet.write(total_row, 3, 'Total:', header_format)
+    worksheet.write(total_row, 4, f'=SUM(E2:E{total_row})', workbook.add_format({'bold': True}))
+    worksheet.write(total_row, 5, f'=SUM(F2:F{total_row})', workbook.add_format({'bold': True}))
+    
+    # Set column widths
+    worksheet.set_column('A:A', 12)  # Date
+    worksheet.set_column('B:B', 30)  # Student
+    worksheet.set_column('C:C', 15)  # Fee Type
+    worksheet.set_column('D:D', 20)  # Category
+    worksheet.set_column('E:F', 15)  # Amount columns
+    worksheet.set_column('G:G', 12)  # Status
+    worksheet.set_column('H:H', 15)  # Method
+    worksheet.set_column('I:I', 15)  # Receipt #
+    
+    workbook.close()
+    output.seek(0)
+    
+    # Generate filename
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f'revenue_report_{timestamp}.xlsx'
+    
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+@login_required
+@role_required('principal')
+def edit_fee_category(request, category_id):
+    fee_category = get_object_or_404(FeeCategory, id=category_id, school=request.user.school)
+    
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        amount = request.POST.get('amount')
+        description = request.POST.get('description')
+        is_recurring = request.POST.get('is_recurring') == 'on'
+        due_date = request.POST.get('due_date')
+        
+        try:
+            # Check if name is unique within the school
+            if FeeCategory.objects.filter(school=request.user.school, name=name).exclude(id=category_id).exists():
+                messages.error(request, "A fee category with this name already exists.")
+                return redirect('principal:edit_fee_category', category_id=category_id)
+            
+            fee_category.name = name
+            fee_category.amount = amount
+            fee_category.description = description
+            fee_category.is_recurring = is_recurring
+            fee_category.due_date = due_date if due_date else None
+            fee_category.save()
+            
+            messages.success(request, 'Fee category updated successfully!')
+            return redirect('principal:fee_categories')
+            
+        except Exception as e:
+            messages.error(request, f'Error updating fee category: {str(e)}')
+            return redirect('principal:edit_fee_category', category_id=category_id)
+    
+    return render(request, 'principal/edit_fee_category.html', {
+        'fee_category': fee_category
+    })
+
+@login_required
+@role_required('principal')
+def delete_fee_category(request, category_id):
+    fee_category = get_object_or_404(FeeCategory, id=category_id, school=request.user.school)
+    
+    if request.method == 'POST':
+        try:
+            # Check if fee category is in use
+            if ClassFee.objects.filter(fee_category=fee_category).exists():
+                messages.error(request, 'Cannot delete fee category that is in use by classes.')
+                return redirect('principal:fee_categories')
+            
+            if FeePayment.objects.filter(fee_category=fee_category).exists():
+                messages.error(request, 'Cannot delete fee category that has associated payments.')
+                return redirect('principal:fee_categories')
+            
+            fee_category.delete()
+            messages.success(request, 'Fee category deleted successfully!')
+            
+        except Exception as e:
+            messages.error(request, f'Error deleting fee category: {str(e)}')
+    
+    return redirect('principal:fee_categories')
+
+@login_required
+@role_required('principal')
+@require_http_methods(['GET'])
+def additional_fee_detail(request, fee_id):
+    """API endpoint to get additional fee details"""
+    try:
+        fee = AdditionalFee.objects.get(id=fee_id, school=request.user.school)
+        data = {
+            'id': fee.id,
+            'name': fee.name,
+            'amount': str(fee.amount),
+            'description': fee.description,
+            'is_active': fee.is_active,
+            'is_general': fee.is_general,
+            'applicable_classes': [{'id': c.id, 'name': c.name} for c in fee.applicable_classes.all()]
+        }
+        return JsonResponse(data)
+    except AdditionalFee.DoesNotExist:
+        return JsonResponse({'error': 'Fee not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@role_required('principal')
+@require_http_methods(['GET'])
+def revenue_stats_api(request):
+    """API endpoint to get revenue statistics"""
+    try:
+        # Get date range from request
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        
+        # Convert to datetime objects
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        else:
+            start_date = timezone.now().date() - timedelta(days=30)
+            
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        else:
+            end_date = timezone.now().date()
+        
+        # Get payment statistics
+        payments = FeePayment.objects.filter(
+            school=request.user.school,
+            payment_date__range=[start_date, end_date]
+        )
+        
+        stats = {
+            'total_revenue': str(payments.aggregate(total=Sum('amount_paid'))['total'] or 0),
+            'class_fee_revenue': str(payments.filter(payment_type='class_fee').aggregate(total=Sum('amount_paid'))['total'] or 0),
+            'additional_fee_revenue': str(payments.filter(payment_type='additional_fee').aggregate(total=Sum('amount_paid'))['total'] or 0),
+            'payment_status': {
+                'paid': payments.filter(payment_status='paid').count(),
+                'partial': payments.filter(payment_status='partial').count(),
+                'unpaid': payments.filter(payment_status='unpaid').count()
+            },
+            'daily_revenue': list(payments.values('payment_date')
+                                .annotate(total=Sum('amount_paid'))
+                                .order_by('payment_date')
+                                .values('payment_date', 'total'))
+        }
+        
+        return JsonResponse(stats)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@role_required('principal')
+@require_http_methods(['GET'])
+def revenue_chart_data_api(request):
+    """API endpoint to get revenue chart data"""
+    try:
+        # Get date range and interval from request
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        interval = request.GET.get('interval', 'daily')  # daily, weekly, monthly
+        
+        # Convert to datetime objects
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        else:
+            start_date = timezone.now().date() - timedelta(days=30)
+            
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        else:
+            end_date = timezone.now().date()
+        
+        # Get base queryset
+        payments = FeePayment.objects.filter(
+            school=request.user.school,
+            payment_date__range=[start_date, end_date]
+        )
+        
+        # Prepare data based on interval
+        if interval == 'daily':
+            data = list(payments.values('payment_date')
+                       .annotate(
+                           total=Sum('amount_paid'),
+                           class_fees=Sum('amount_paid', filter=Q(payment_type='class_fee')),
+                           additional_fees=Sum('amount_paid', filter=Q(payment_type='additional_fee'))
+                       )
+                       .order_by('payment_date'))
+            
+        elif interval == 'weekly':
+            data = list(payments.extra(
+                select={'week': "date_trunc('week', payment_date)"}
+            ).values('week')
+            .annotate(
+                total=Sum('amount_paid'),
+                class_fees=Sum('amount_paid', filter=Q(payment_type='class_fee')),
+                additional_fees=Sum('amount_paid', filter=Q(payment_type='additional_fee'))
+            )
+            .order_by('week'))
+            
+        else:  # monthly
+            data = list(payments.extra(
+                select={'month': "date_trunc('month', payment_date)"}
+            ).values('month')
+            .annotate(
+                total=Sum('amount_paid'),
+                class_fees=Sum('amount_paid', filter=Q(payment_type='class_fee')),
+                additional_fees=Sum('amount_paid', filter=Q(payment_type='additional_fee'))
+            )
+            .order_by('month'))
+        
+        # Format the data
+        formatted_data = []
+        for item in data:
+            formatted_item = {
+                'date': item.get('payment_date', item.get('week', item.get('month'))).strftime('%Y-%m-%d'),
+                'total': str(item['total'] or 0),
+                'class_fees': str(item['class_fees'] or 0),
+                'additional_fees': str(item['additional_fees'] or 0)
+            }
+            formatted_data.append(formatted_item)
+        
+        return JsonResponse({'data': formatted_data})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 
 
 
