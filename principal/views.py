@@ -580,8 +580,8 @@ def create_class(request):
     ).select_related('teacher')
     
     # Get fee categories for the school
-    fee_categories = FeeCategory.objects.filter(school=request.user.school)
     
+        
     return render(request, 'classes/create_class.html', {
         'teachers': teachers,
         'fee_categories': fee_categories
@@ -1028,9 +1028,6 @@ class PaymentInfoDeleteView(View):
         payment_info.delete()
         messages.success(request, "Payment info deleted.")
         return redirect("school-dashboard")
-
-
-
 
 
 
@@ -2393,8 +2390,3 @@ def revenue_chart_data_api(request):
         return JsonResponse({'data': formatted_data})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
-
-
-
-

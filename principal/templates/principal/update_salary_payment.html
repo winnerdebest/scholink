@@ -1,4 +1,5 @@
 {% extends 'principal/base.html' %}
+{% load humanize %}
 {% load static %}
 
 {% block content %}
@@ -96,20 +97,20 @@
                     <div class="space-y-2">
                         <div class="flex justify-between">
                             <span class="text-gray-600 dark:text-gray-400">Basic Salary:</span>
-                            <span class="text-gray-800 dark:text-white">${{ salary_payment.basic_salary|default:teacher.salary }}</span>
+                            <span class="text-gray-800 dark:text-white">₦{{ salary_payment.basic_salary|default:teacher.salary|intcomma }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600 dark:text-gray-400">Allowances:</span>
-                            <span class="text-gray-800 dark:text-white">${{ salary_payment.allowances|default:'0.00' }}</span>
+                            <span class="text-gray-800 dark:text-white">₦{{ salary_payment.allowances|default:'0.00'|intcomma }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600 dark:text-gray-400">Deductions:</span>
-                            <span class="text-gray-800 dark:text-white">${{ salary_payment.deductions|default:'0.00' }}</span>
+                            <span class="text-gray-800 dark:text-white">₦{{ salary_payment.deductions|default:'0.00'|intcomma }}</span>
                         </div>
                         <div class="border-t border-gray-200 dark:border-gray-600 pt-2 mt-2">
                             <div class="flex justify-between font-semibold">
                                 <span class="text-gray-800 dark:text-white">Net Salary:</span>
-                                <span class="text-gray-800 dark:text-white">${{ salary_payment.net_salary|default:teacher.salary }}</span>
+                                <span class="text-gray-800 dark:text-white">₦{{ salary_payment.net_salary|default:teacher.salary|intcomma }}</span>
                             </div>
                         </div>
                     </div>

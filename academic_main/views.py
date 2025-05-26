@@ -61,6 +61,34 @@ def user_logout_view(request):
     return redirect('user_login')
 
 
+from django.core.mail import send_mail, BadHeaderError
+from django.http import HttpResponse
+import smtplib
+
+def test_email(request):
+    try:
+        send_mail(
+            subject="Test Email from Django",
+            message="This is a test email sent from your Django app.",
+            from_email=None,  # Uses DEFAULT_FROM_EMAIL
+            recipient_list=["winnerbrown9@gmail.com"],
+            fail_silently=False,
+        )
+        return HttpResponse("✅ Email sent successfully!")
+
+    except BadHeaderError:
+        return HttpResponse("❌ Invalid header found.")
+
+    except smtplib.SMTPAuthenticationError as e:
+        return HttpResponse(f"❌ SMTP Authentication Error: {str(e)}")
+
+    except smtplib.SMTPException as e:
+        return HttpResponse(f"❌ SMTP Error: {str(e)}")
+
+    except Exception as e:
+        return HttpResponse(f"❌ General Error: {str(e)}")
+
+
 
 
 def index(request):

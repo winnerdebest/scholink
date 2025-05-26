@@ -89,6 +89,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -132,7 +133,7 @@ DATABASES = {
 
 
 
-POSTGRESS_LOCALLY = True
+POSTGRESS_LOCALLY = False
 if ENVIRONMENT == 'production' or POSTGRESS_LOCALLY == True:
         DATABASES['default'] = dj_database_url.parse(env('DATABASE_URL'))
 
@@ -219,16 +220,20 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email configuration
-EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
-EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+
+
+
+USE_CONSOLE_EMAIL = env.bool("USE_CONSOLE_EMAIL", default=True)
+
+EMAIL_BACKEND = (
+    "django.core.mail.backends.console.EmailBackend"
+    if USE_CONSOLE_EMAIL
+    else "django.core.mail.backends.smtp.EmailBackend"
+)
+
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.gmail.com")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
-
-# Use a dummy email in settings — you'll override this dynamically
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=EMAIL_HOST_USER)
-
-# Use console backend during development
-if DEBUG:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
